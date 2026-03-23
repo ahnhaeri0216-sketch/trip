@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlanAI — 블록 조립형 여행 플래너</title>
+  <meta name="description" content="AI와 함께 블록을 조립하며 나만의 여행 일정을 만들어보세요" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="bg-orbs" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div id="app">
+
+  <!-- ① HOME -->
+  <section class="screen active" id="screen-home">
+    <div class="home-inner">
+      <div class="logo">🗺️ Plan<em>AI</em></div>
+      <div class="hero-badge">✦ 시나리오 2 · 블록 조립형 AI 협업 플래너</div>
+      <h1 class="hero-title">
+        AI와 함께<br>
+        <span class="gradient">블록으로 쌓는</span><br>
+        여행 일정
+      </h1>
+      <div class="glass-card">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>여행지</label>
+            <input type="text" id="destination" placeholder="예: 도쿄, 파리, 뉴욕" />
+          </div>
+          <div class="form-group">
+            <label>출발일</label>
+            <input type="date" id="start-date" />
+          </div>
+          <div class="form-group">
+            <label>귀국일</label>
+            <input type="date" id="end-date" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>인원</label>
+            <select id="party-size">
+              <option value="1">혼자 여행 🙋</option>
+              <option value="2" selected>2명 (커플/친구) 👫</option>
+              <option value="3">3~4명 (소그룹) 👨‍👩‍👧</option>
+              <option value="5">5명 이상 (단체) 👨‍👩‍👧‍👦</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px">
+          <button class="btn-secondary" onclick="openModal()" style="flex-shrink:0">🔑 API Key</button>
+          <button class="btn-primary" onclick="startBoard()" style="flex:1">🚀 일정 보드 시작 →</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text-muted)">✦ 드래그 앤 드롭</span>
+        <span style="font-size:11px;color:var(--text-muted)">✦ AI 실시간 추천</span>
+        <span style="font-size:11px;color:var(--text-muted)">✦ 동선 자동 최적화</span>
+        <span style="font-size:11px;color:var(--text-muted)">✦ 충돌 자동 감지</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② BOARD -->
+  <section class="screen" id="screen-board">
+    <!-- Header -->
+    <header class="board-header">
+      <div class="board-logo">🗺️ PlanAI</div>
+      <div class="v-divider"></div>
+      <div>
+        <div class="board-trip-title" id="board-title">여행지</div>
+        <div class="board-trip-meta" id="board-meta">날짜</div>
+      </div>
+      <div class="weather-strip" id="weather-strip"></div>
+      <div class="board-actions">
+        <button class="btn-secondary" style="font-size:12px;padding:7px 13px" onclick="optimizeRoute()">⚡ 동선 최적화</button>
+        <button class="btn-secondary" style="font-size:12px;padding:7px 13px" onclick="showScreen('screen-home')">← 뒤로</button>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="board-body">
+
+      <!-- Timeline Panel -->
+      <div class="timeline-panel">
+        <div class="day-tabs" id="day-tabs"></div>
+        <div class="timeline-scroll">
+          <div class="timeline-wrapper" id="timeline-wrapper">
+            <!-- JS renders time markers, hour lines, drop zone -->
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Sidebar -->
+      <div class="ai-panel">
+        <div class="ai-panel-header">
+          <div class="ai-panel-title">
+            <div class="ai-dot"></div>
+            AI 추천 블록
+          </div>
+          <div class="filter-chips" id="filter-chips">
+            <button class="filter-chip active" data-filter="전체" onclick="filterRecs('전체', this)">전체</button>
+            <button class="filter-chip" data-filter="관광" onclick="filterRecs('관광', this)">🏛️ 관광</button>
+            <button class="filter-chip" data-filter="식당" onclick="filterRecs('식당', this)">🍜 식당</button>
+            <button class="filter-chip" data-filter="카페" onclick="filterRecs('카페', this)">☕ 카페</button>
+            <button class="filter-chip" data-filter="쇼핑" onclick="filterRecs('쇼핑', this)">🛍️ 쇼핑</button>
+            <button class="filter-chip" data-filter="휴식" onclick="filterRecs('휴식', this)">😴 휴식</button>
+          </div>
+        </div>
+        <div class="ai-loading" id="ai-loading" style="display:none">
+          <div class="ai-loading-spinner"></div>
+          <div>AI가 추천 블록 생성 중...</div>
+        </div>
+        <div class="ai-panel-body" id="rec-list">
+          <div class="empty-panel">
+            <div class="empty-panel-icon">🤖</div>
+            <div>여행지를 설정하면<br>AI가 추천 블록을 만들어드려요</div>
+          </div>
+        </div>
+        <div class="ai-panel-footer">
+          <button class="btn-primary" style="width:100%;font-size:12px;padding:10px" onclick="loadMoreRecs()">
+            ✨ 추천 더 받기
+          </button>
+        </div>
+        <div class="stats-bar">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-blocks">0</div>
+            <div class="stat-label">블록</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-hours">0h</div>
+            <div class="stat-label">총 시간</div>
+          </div>
+          <div class="stat-item" id="stat-conflict-item">
+            <div class="stat-value" id="stat-conflicts">0</div>
+            <div class="stat-label">충돌</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<!-- API Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">🔑 Gemini API Key 설정</div>
+    <div class="modal-sub">
+      AI 추천 블록 생성에 Gemini API Key가 필요합니다.<br>
+      키는 브라우저 localStorage에만 저장됩니다.
+    </div>
+    <div class="form-group">
+      <label>API Key</label>
+      <input type="password" id="key-input" placeholder="AIza..." />
+    </div>
+    <div style="margin-top:10px">
+      <a class="modal-link" href="https://aistudio.google.com/app/apikey" target="_blank">
+        🔗 Google AI Studio에서 무료 발급받기 →
+      </a>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn-primary" onclick="saveKey()" style="flex:1;padding:11px 20px">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

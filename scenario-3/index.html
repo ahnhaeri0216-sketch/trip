@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TripAI — 실시간 여행 도우미</title>
+  <meta name="description" content="여행 중 AI가 날씨·상황에 맞춰 즉시 대안을 제시해드려요" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ① SETUP -->
+  <section class="screen active" id="screen-setup">
+    <div class="setup-card">
+      <div class="brand">
+        <div class="dot"></div>
+        TripAI
+      </div>
+      <div class="brand-sub">시나리오 3 · 상황 대응형 실시간 여행 도우미</div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div class="setup-label">여행지</div>
+          <input class="setup-input" type="text" id="dest" placeholder="예: 도쿄, 파리, 방콕" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div class="setup-label">여행 시작일</div>
+            <input class="setup-input" type="date" id="sdate" />
+          </div>
+          <div>
+            <div class="setup-label">Day 선택</div>
+            <select class="setup-input" id="dayn">
+              <option value="1">1일차</option>
+              <option value="2">2일차</option>
+              <option value="3">3일차</option>
+              <option value="4">4일차</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="setup-label">여행 스타일</div>
+          <div class="style-chips" id="style-chips">
+            <button class="style-chip on" data-v="미식">🍜 미식</button>
+            <button class="style-chip" data-v="관광">🏛️ 관광</button>
+            <button class="style-chip" data-v="카페">☕ 카페</button>
+            <button class="style-chip" data-v="쇼핑">🛍️ 쇼핑</button>
+            <button class="style-chip" data-v="자연">🌿 자연</button>
+          </div>
+        </div>
+        <div>
+          <div class="setup-label">날씨 시뮬레이션</div>
+          <select class="setup-input" id="weather-sim">
+            <option value="sunny">☀️ 맑음 / 26°C</option>
+            <option value="cloudy">⛅ 흐림 / 21°C</option>
+            <option value="rain" selected>🌧️ 비 / 17°C — (비 시나리오 체험)</option>
+            <option value="hot">🌡️ 폭염 / 35°C</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="api-link" onclick="openModal()">🔑 Gemini API Key 설정</span>
+          <button class="start-btn" style="width:auto;padding:12px 28px" onclick="startMain()">
+            🚀 여행 시작 →
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② MAIN -->
+  <section class="screen" id="screen-main">
+
+    <!-- LEFT: Map panel -->
+    <div class="map-panel">
+      <div class="map-header">
+        <div class="map-logo"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--rose);box-shadow:0 0 8px var(--rose);margin-right:6px"></span>TripAI</div>
+        <div class="trip-badge" id="map-trip-badge">✈️ 도쿄</div>
+        <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+        <div class="map-time" id="map-clock">21:40</div>
+        <button class="qa-btn" style="margin-left:auto" onclick="showScreen('screen-setup')">← 뒤로</button>
+      </div>
+
+      <!-- Map canvas (SVG + pins) -->
+      <div class="map-canvas" id="map-canvas">
+        <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <!-- pins rendered by JS -->
+      </div>
+
+      <!-- Weather card -->
+      <div class="weather-card" id="weather-card">
+        <div class="weather-icon" id="w-icon">🌧️</div>
+        <div>
+          <div class="weather-temp" id="w-temp">17°</div>
+          <div class="weather-label" id="w-label">비 · 우산 필수</div>
+        </div>
+        <div class="weather-warn" id="w-warn" style="display:none">⚠️ 야외 일정 주의</div>
+      </div>
+
+      <!-- Nearby deck -->
+      <div class="nearby-deck" id="nearby-deck"></div>
+    </div>
+
+    <!-- RIGHT: Assistant panel -->
+    <div class="assist-panel">
+
+      <!-- Schedule strip -->
+      <div class="schedule-strip">
+        <div class="strip-title">오늘 일정</div>
+        <div class="schedule-items" id="schedule-items"></div>
+      </div>
+
+      <!-- Chat area -->
+      <div class="chat-area" id="chat-area"></div>
+
+      <!-- Quick actions -->
+      <div class="quick-actions">
+        <button class="qa-btn rain"  onclick="quickAct('rain')">🌧️ 비 온다</button>
+        <button class="qa-btn food"  onclick="quickAct('food')">🍽️ 배고프다</button>
+        <button class="qa-btn tired" onclick="quickAct('tired')">😮‍💨 지쳤어</button>
+        <button class="qa-btn near"  onclick="quickAct('near')">📍 근처 뭐 있어?</button>
+        <button class="qa-btn"       onclick="quickAct('hot')">🌡️ 너무 더워</button>
+        <button class="qa-btn"       onclick="quickAct('cafe')">☕ 카페 가고 싶다</button>
+      </div>
+
+      <!-- Input -->
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input" type="text"
+          placeholder="지금 상황을 입력하세요 (예: 비 온다, 배고파)"
+          onkeydown="if(event.key==='Enter') sendMsg()" />
+        <button class="send-btn" onclick="sendMsg()">↑</button>
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>🔑 Gemini API Key</h3>
+    <p>AI 응답에 Gemini API Key가 필요합니다. localStorage에만 저장돼요.<br>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio에서 무료 발급 →</a>
+    </p>
+    <div class="setup-label">API Key</div>
+    <input class="setup-input" type="password" id="key-input" placeholder="AIza..." style="margin-top:6px" />
+    <div class="modal-row">
+      <button class="qa-btn" onclick="closeModal()" style="flex:1;padding:10px">취소</button>
+      <button class="start-btn" onclick="saveKey()" style="flex:2;padding:10px">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
