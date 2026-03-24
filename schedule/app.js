@@ -111,6 +111,19 @@ function pickTheme(chip) {
   if (st.theme === 'custom') custom.classList.add('visible'); else custom.classList.remove('visible');
 }
 
+/* ── Date change ── */
+function onDateChange() {
+  const dep = document.getElementById('dep-date').value;
+  const ret = document.getElementById('ret-date').value;
+  if (!dep || !ret) return;
+  const nights = Math.round((new Date(ret) - new Date(dep)) / 86400000);
+  if (nights < 1) { toast('귀국일이 출발일보다 빨라요'); return; }
+  document.getElementById('nights-num').textContent = nights;
+  document.getElementById('date-nights').style.display = 'block';
+  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+  document.getElementById('date-summary').textContent = `${fmt(dep)} 출발 → ${fmt(ret)} 귀국 · ${nights}박 ${nights + 1}일`;
+}
+
 function startPlanning() {
   const dest = document.getElementById('dest-input').value.trim();
   if (!dest) { toast('여행지를 입력해주세요'); return; }
@@ -120,8 +133,14 @@ function startPlanning() {
     if (!cv) { toast('테마를 직접 입력해주세요'); return; }
     st.theme = cv;
   }
+  const dep = document.getElementById('dep-date').value;
+  const ret = document.getElementById('ret-date').value;
+  if (!dep || !ret) { toast('여행 날짜를 선택해주세요'); return; }
+  const nights = Math.round((new Date(ret) - new Date(dep)) / 86400000);
+  if (nights < 1) { toast('귀국일이 출발일보다 빨라요'); return; }
+
   st.dest     = dest;
-  st.dayCount = parseInt(document.getElementById('day-count').value);
+  st.dayCount = nights;  // 박수 = 일차 수
   st.apiKey   = localStorage.getItem('tripai_key') || '';
 
   // Save for packing card
@@ -130,6 +149,9 @@ function startPlanning() {
     theme: st.theme,
     days: st.dayCount,
     activities: [...st.activeCats],
+  }));
+  localStorage.setItem('tripai_flight', JSON.stringify({
+    dest: st.dest, depDate: dep, retDate: ret, nights: st.dayCount, weather: 'mild',
   }));
 
   // Init schedule
@@ -452,4 +474,11 @@ function closeAIPanel() {
 /* ── Init ── */
 (function init() {
   st.apiKey = localStorage.getItem('tripai_key') || '';
+  // Default dates: 2 months from now, 5-night trip
+  const d1 = new Date(); d1.setMonth(d1.getMonth() + 2); d1.setDate(15);
+  const d2 = new Date(d1); d2.setDate(d2.getDate() + 5);
+  const fmt = d => d.toISOString().split('T')[0];
+  document.getElementById('dep-date').value = fmt(d1);
+  document.getElementById('ret-date').value = fmt(d2);
+  onDateChange();
 })();

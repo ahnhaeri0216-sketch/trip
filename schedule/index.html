@@ -49,19 +49,28 @@
       </div>
 
       <div class="setup-section">
-        <div class="setup-label">여행지 & 일수</div>
-        <div class="input-row-2">
-          <input class="s-input" id="dest-input" type="text" placeholder="예: 도쿄, 파리, 방콕..." />
-          <select class="day-select" id="day-count">
-            <option value="1">1일</option>
-            <option value="2">2일</option>
-            <option value="3" selected>3일</option>
-            <option value="4">4일</option>
-            <option value="5">5일</option>
-            <option value="6">6일</option>
-            <option value="7">7일</option>
-          </select>
+        <div class="setup-label">여행지</div>
+        <input class="s-input" id="dest-input" type="text" placeholder="예: 도쿄, 파리, 방콕..." style="width:100%" />
+      </div>
+
+      <div class="setup-section">
+        <div class="setup-label">여행 날짜</div>
+        <div class="date-row">
+          <div class="date-field">
+            <div class="date-field-label">✈️ 출발일</div>
+            <input class="s-input date-input" id="dep-date" type="date" onchange="onDateChange()" />
+          </div>
+          <div class="date-arrow">→</div>
+          <div class="date-field">
+            <div class="date-field-label">🏠 귀국일</div>
+            <input class="s-input date-input" id="ret-date" type="date" onchange="onDateChange()" />
+          </div>
+          <div class="date-nights" id="date-nights" style="display:none">
+            <div class="nights-num" id="nights-num">3</div>
+            <div class="nights-label">박</div>
+          </div>
         </div>
+        <div class="date-summary" id="date-summary"></div>
       </div>
 
       <button class="start-btn" onclick="startPlanning()">🗺️ 일정 계획 시작하기 →</button>
