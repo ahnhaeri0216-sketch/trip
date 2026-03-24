@@ -412,41 +412,44 @@ body {
 
 /* Day tabs */
 .day-tabs {
-  height: 40px;
-  min-height: 40px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 6px;
-  flex-shrink: 0;
-  overflow-x: auto;
+  height: 76px; min-height: 76px;
+  background: var(--s1); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 12px; gap: 6px;
+  flex-shrink: 0; overflow-x: auto;
 }
+.day-tabs::-webkit-scrollbar { height: 3px; }
+.day-tabs::-webkit-scrollbar-track { background: transparent; }
+.day-tabs::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
 .day-tab {
-  padding: 5px 14px;
-  border-radius: 999px;
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all .2s;
+  min-width: 80px; padding: 8px 12px;
+  border-radius: var(--rs);
+  background: var(--s2); border: 1.5px solid var(--border2);
+  color: var(--muted); cursor: pointer;
+  display: flex; flex-direction: column; gap: 3px;
+  transition: all .2s; flex-shrink: 0;
+  user-select: none;
 }
-
-.day-tab.active {
-  background: var(--coral);
-  border-color: var(--coral);
-  color: #fff;
-}
-
 .day-tab:hover:not(.active) {
+  border-color: rgba(255,255,255,.2); color: var(--text);
+}
+.day-tab.active {
+  border-color: var(--coral); background: rgba(255,107,107,0.12);
   color: var(--text);
-  border-color: rgba(255, 255, 255, .2);
+}
+.day-tab-num {
+  font-size: 12px; font-weight: 800;
+  color: inherit;
+}
+.day-tab.active .day-tab-num { color: var(--coral); }
+.day-tab-date {
+  font-size: 9px; font-weight: 600; color: var(--dim);
+}
+.day-tab.active .day-tab-date { color: var(--muted); }
+.day-tab-summary {
+  display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+  min-height: 12px; margin-top: 2px;
 }
 
 /* 3-panel layout */

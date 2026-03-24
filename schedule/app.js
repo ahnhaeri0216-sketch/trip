@@ -177,16 +177,47 @@ function buildMainScreen() {
   switchDay(1);
 }
 
-/* Day tabs */
+/* Day tabs — rich cards ── */
 function buildDayTabs() {
+  const dep = localStorage.getItem('tripai_flight')
+    ? JSON.parse(localStorage.getItem('tripai_flight')).depDate : null;
   const tabs = document.getElementById('day-tabs');
   tabs.innerHTML = '';
   for (let d = 1; d <= st.dayCount; d++) {
-    const btn = document.createElement('button');
-    btn.className = `day-tab${d === 1 ? ' active' : ''}`;
-    btn.textContent = `${d}일차`;
-    btn.onclick = () => switchDay(d);
-    tabs.appendChild(btn);
+    const card = document.createElement('div');
+    card.className = `day-tab${d === 1 ? ' active' : ''}`;
+    card.dataset.day = d;
+    card.onclick = () => switchDay(d);
+    // Calculate calendar date for this day
+    let dateStr = '';
+    if (dep) {
+      const dt = new Date(dep + 'T00:00:00');
+      dt.setDate(dt.getDate() + d - 1);
+      dateStr = dt.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' });
+    }
+    card.innerHTML = `
+      <div class="day-tab-num">${d}일차</div>
+      ${dateStr ? `<div class="day-tab-date">${dateStr}</div>` : ''}
+      <div class="day-tab-summary" id="day-summary-${d}"></div>`;
+    tabs.appendChild(card);
+  }
+  refreshDayTabs();
+}
+
+function refreshDayTabs() {
+  for (let d = 1; d <= st.dayCount; d++) {
+    const items = Object.values(st.schedule[d] || {});
+    const el = document.getElementById(`day-summary-${d}`);
+    if (!el) continue;
+    if (!items.length) {
+      el.innerHTML = '<span style="font-size:9px;color:var(--dim)">비어있음</span>';
+    } else {
+      const dots = items.slice(0,5).map(p => {
+        const c = { '관광':'var(--cat-sight)','맛집':'var(--cat-food)','카페':'var(--cat-cafe)','쇼핑':'var(--cat-shop)','휴식':'var(--cat-rest)' }[p.cat] || 'var(--coral)';
+        return `<span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block"></span>`;
+      }).join('');
+      el.innerHTML = `${dots}<span style="font-size:9px;color:var(--muted);margin-left:3px">${items.length}개</span>`;
+    }
   }
 }
 
@@ -196,6 +227,7 @@ function switchDay(d) {
   document.getElementById('mid-day-label').textContent = `${d}일차 타임라인`;
   renderTimeline();
   renderMap();
+  refreshDayTabs();
 }
 
 /* ── Left panel: place blocks ── */
