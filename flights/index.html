@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>항공권 찾기 — AI 여행 플래너</title>
+  <meta name="description" content="목적지를 입력하면 AI가 최적 여행 시기를 달력으로 추천하고 항공권 예약 사이트로 바로 연결해드려요" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo">✈ Trip<span>AI</span></div>
+    <div style="font-size:11px;color:var(--muted)">항공권</div>
+    <a class="nav-back" href="../">← 홈으로</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">🤖 AI 여행 시기 추천</div>
+    <h1>어디로 <em>떠나시나요?</em></h1>
+    <p>목적지를 입력하면 AI가 월별 최적 여행 시기를 알려드리고<br>주요 항공권 예약 사이트로 바로 연결해드려요.</p>
+  </section>
+
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <div class="search-card">
+      <div class="field-label">여행지 입력</div>
+      <div class="dest-input-row">
+        <input class="dest-input" id="dest-input" type="text"
+          placeholder="예: 도쿄, 파리, 방콕, 뉴욕..."
+          onkeydown="if(event.key==='Enter')searchDest()" />
+        <button class="search-btn" id="search-btn" onclick="searchDest()">AI 추천 받기 ✦</button>
+      </div>
+      <div class="quick-dest">
+        <button class="qdest" onclick="setDest('도쿄')">🇯🇵 도쿄</button>
+        <button class="qdest" onclick="setDest('파리')">🇫🇷 파리</button>
+        <button class="qdest" onclick="setDest('방콕')">🇹🇭 방콕</button>
+        <button class="qdest" onclick="setDest('뉴욕')">🇺🇸 뉴욕</button>
+        <button class="qdest" onclick="setDest('바르셀로나')">🇪🇸 바르셀로나</button>
+        <button class="qdest" onclick="setDest('발리')">🇮🇩 발리</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEASON CALENDAR -->
+  <section class="calendar-section" id="calendar-section">
+    <div class="section-header">
+      <div class="section-title" id="cal-title">도쿄 — 월별 여행 추천</div>
+      <div class="ai-chip"><div class="ai-chip-dot"></div>AI 분석</div>
+    </div>
+
+    <!-- Loading -->
+    <div class="spinner-wrap" id="cal-loading">
+      <div class="spinner"></div>
+      <div id="cal-loading-text">AI가 여행 시기를 분석하는 중...</div>
+    </div>
+
+    <!-- Airport info -->
+    <div class="airport-info" id="airport-info" style="display:none"></div>
+
+    <!-- Month grid -->
+    <div class="cal-grid" id="cal-grid" style="display:none"></div>
+
+    <!-- Legend -->
+    <div class="cal-legend" style="display:none" id="cal-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>최적 시기</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>무난한 시기</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--rose)"></div>비추 시기</div>
+    </div>
+  </section>
+
+  <!-- DATE PICKER -->
+  <section class="date-section" id="date-section">
+    <div class="section-header">
+      <div class="section-title">날짜 선택</div>
+    </div>
+    <div class="date-grid">
+      <div class="date-field">
+        <div class="field-label">출발일</div>
+        <input class="date-input" type="date" id="dep-date" onchange="updateBooking()" />
+      </div>
+      <div class="date-field">
+        <div class="field-label">귀국일</div>
+        <input class="date-input" type="date" id="ret-date" onchange="updateBooking()" />
+      </div>
+    </div>
+  </section>
+
+  <!-- BOOKING SITES -->
+  <section class="booking-section" id="booking-section">
+    <div class="section-header">
+      <div class="section-title">항공권 검색하기</div>
+    </div>
+    <div class="booking-flight-info" id="booking-flight-info">
+      <strong id="booking-route">인천 → 도쿄(NRT)</strong>
+      <span id="booking-dates">날짜를 선택하면 바로 검색할 수 있어요</span>
+    </div>
+    <div class="booking-grid" id="booking-grid"></div>
+  </section>
+
+  <div class="api-note">
+    <a onclick="openModal()">🔑 Gemini API Key 설정</a>으로 실제 AI 추천을 받아보세요
+  </div>
+
+</div>
+
+<!-- API Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>🔑 Gemini API Key</h3>
+    <p>AI 시즌 추천에 필요합니다. 브라우저 localStorage에만 저장돼요.<br>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio에서 무료 발급 →</a>
+    </p>
+    <div class="field-label">API Key</div>
+    <input type="password" id="key-input" placeholder="AIza..." />
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="closeModal()">취소</button>
+      <button class="btn-primary" onclick="saveKey()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
