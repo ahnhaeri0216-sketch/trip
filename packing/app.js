@@ -1,7 +1,102 @@
-/* ══════════════════════════════════════
-   TripAI — 짐싸기 · Packing List Generator
-   Rule-based core + optional Gemini AI personalization tip
-══════════════════════════════════════ */
+/* ── Confirm section from previous cards ── */
+const WEATHER_LABELS = {
+  sunny:'☀️ 맑고 따뜻함', hot:'🌡️ 폭염·더움',
+  rain:'🌧️ 비·우기',     cold:'🧥 추움·겨울',
+  snow:'❄️ 눈·설경',      mild:'🌤️ 선선·쾌적',
+};
+
+function loadPreviousData() {
+  const flight   = JSON.parse(localStorage.getItem('tripai_flight')   || 'null');
+  const schedule = JSON.parse(localStorage.getItem('tripai_schedule') || 'null');
+  if (!flight && !schedule) return; // nothing to show
+
+  const dest    = schedule?.dest    || flight?.dest    || '';
+  const days    = schedule?.days    || flight?.nights  || 3;
+  const weather = flight?.weather   || 'mild';
+  const theme   = schedule?.theme   || '일반';
+  const acts    = schedule?.activities || ['관광','맛집'];
+  const dep     = flight?.depDate   || '';
+  const ret     = flight?.retDate   || '';
+
+  const dateStr = dep && ret
+    ? `${new Date(dep).toLocaleDateString('ko-KR',{month:'short',day:'numeric'})} ~ ${new Date(ret).toLocaleDateString('ko-KR',{month:'short',day:'numeric'})}`
+    : `${days}박 ${days+1}일`;
+
+  const rows = [
+    { icon:'✈️', label:'여행지',   value: dest,                   field:'dest-prev',    type:'text',   placeholder:'예: 도쿄' },
+    { icon:'📅', label:'기간',     value: dateStr,                field:'date-prev',    type:'text',   placeholder:'예: 3박 4일', readonly:true },
+    { icon:'🌤️', label:'날씨',     value: WEATHER_LABELS[weather],field:'weather-prev', type:'select', options: Object.entries(WEATHER_LABELS) },
+    { icon:'🎯', label:'여행 테마', value: theme,                  field:'theme-prev',   type:'text',   placeholder:'예: 미식여행' },
+    { icon:'🏃', label:'활동',     value: acts.join(', '),        field:'acts-prev',    type:'text',   placeholder:'예: 관광, 맛집' },
+  ];
+
+  const container = document.getElementById('confirm-rows');
+  container.innerHTML = rows.map(r => {
+    if (r.type === 'select') {
+      const opts = r.options.map(([v,l]) =>
+        `<option value="${v}" ${WEATHER_LABELS[weather]===l?'selected':''}>${l}</option>`).join('');
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border2);border-radius:var(--rs)">
+          <span style="font-size:16px;width:24px">${r.icon}</span>
+          <span style="font-size:11px;font-weight:700;color:var(--muted);min-width:60px">${r.label}</span>
+          <select id="${r.field}" style="flex:1;background:transparent;border:none;color:var(--text);font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer">${opts}</select>
+        </div>`;
+    }
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border2);border-radius:var(--rs)">
+        <span style="font-size:16px;width:24px">${r.icon}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--muted);min-width:60px">${r.label}</span>
+        <input id="${r.field}" type="text" value="${r.value}" placeholder="${r.placeholder}" ${r.readonly?'readonly':''}
+          style="flex:1;background:transparent;border:none;color:var(--text);font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;${r.readonly?'cursor:default;color:var(--muted)':''}"/>
+        ${!r.readonly?`<span style="font-size:10px;color:var(--dim)">수정 가능</span>`:''}
+      </div>`;
+  }).join('');
+
+  // Store parsed nights separately
+  document.getElementById('confirm-section').dataset.nights = days;
+  document.getElementById('confirm-section').dataset.weather = weather;
+  document.getElementById('confirm-section').style.display = 'block';
+  // Hide the manual form by default
+  document.getElementById('manual-wrap').style.display = 'none';
+}
+
+function confirmAndGenerate() {
+  // Read from confirm rows
+  const destEl    = document.getElementById('dest-prev');
+  const weatherEl = document.getElementById('weather-prev');
+  const themeEl   = document.getElementById('theme-prev');
+  const actsEl    = document.getElementById('acts-prev');
+  const nights    = parseInt(document.getElementById('confirm-section').dataset.nights) || 3;
+
+  st.dest     = destEl?.value.trim() || '여행지';
+  st.days     = nights;
+  st.weather  = weatherEl?.value || 'mild';
+  st.theme    = themeEl?.value.trim() || '일반';
+
+  // Parse activities from comma-separated string
+  if (actsEl?.value) {
+    st.activities = new Set(actsEl.value.split(',').map(a => a.trim()).filter(Boolean));
+  }
+
+  st.apiKey = localStorage.getItem('tripai_key') || '';
+  st.checkedItems.clear();
+
+  const items = buildPackList();
+  st.allItems = items;
+  renderSummary();
+  renderList(items);
+  document.getElementById('result-wrap').classList.add('visible');
+  document.getElementById('result-wrap').scrollIntoView({ behavior:'smooth', block:'start' });
+  updateProgress();
+
+  if (st.apiKey) fetchAITip(); else showFallbackTip();
+}
+
+function showManualForm() {
+  document.getElementById('confirm-section').style.display = 'none';
+  document.getElementById('manual-wrap').style.display = 'block';
+  document.getElementById('manual-wrap').scrollIntoView({ behavior:'smooth', block:'start' });
+}
 
 /* ── Rule-based packing database ── */
 const PACK_DB = {
@@ -402,4 +497,5 @@ function showFallbackTip() {
 /* ── Init ── */
 (function init() {
   st.apiKey = localStorage.getItem('tripai_key') || '';
+  loadPreviousData();
 })();

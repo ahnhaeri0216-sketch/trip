@@ -124,6 +124,14 @@ function startPlanning() {
   st.dayCount = parseInt(document.getElementById('day-count').value);
   st.apiKey   = localStorage.getItem('tripai_key') || '';
 
+  // Save for packing card
+  localStorage.setItem('tripai_schedule', JSON.stringify({
+    dest: st.dest,
+    theme: st.theme,
+    days: st.dayCount,
+    activities: [...st.activeCats],
+  }));
+
   // Init schedule
   st.schedule = {};
   for (let d = 1; d <= st.dayCount; d++) st.schedule[d] = {};

@@ -21,8 +21,23 @@
     <p>여행지·날씨·활동 정보를 입력하면<br>빠뜨리기 쉬운 짐까지 체크리스트로 만들어드려요.</p>
   </section>
 
-  <!-- TRIP CONTEXT -->
-  <div class="context-wrap">
+  <!-- ✅ 이전 카드 정보 확인 -->
+  <div class="context-wrap" id="confirm-section" style="display:none">
+    <div class="context-card" style="background:rgba(52,211,153,0.05);border-color:rgba(52,211,153,0.25)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+        <div style="font-size:15px;font-weight:800">이전 단계 정보, 이렇게 맞나요?</div>
+        <div style="font-size:10px;color:var(--green);background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);padding:2px 9px;border-radius:999px;font-weight:700">자동 입력됨</div>
+      </div>
+      <div id="confirm-rows" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="gen-btn" style="margin-top:0;flex:2" onclick="confirmAndGenerate()">✅ 맞아요, 짐 목록 생성</button>
+        <button onclick="showManualForm()" style="flex:1;padding:14px;border-radius:var(--r);background:var(--glass);border:1px solid var(--border2);color:var(--muted);font-family:Inter,sans-serif;font-size:13px;font-weight:700;cursor:pointer">✏️ 수정할게요</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRIP CONTEXT (manual form) -->
+  <div class="context-wrap" id="manual-wrap">
     <div class="context-card">
       <div class="ctx-grid">
         <div class="ctx-field">

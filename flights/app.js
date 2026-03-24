@@ -262,10 +262,37 @@ function selectMonth(i, card) {
   document.getElementById('date-section').scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
+/* ── Save to localStorage for packing card ── */
+function saveFlightData() {
+  const dep = document.getElementById('dep-date').value;
+  const ret = document.getElementById('ret-date').value;
+  if (!st.dest || !dep || !ret) return;
+  const nights = Math.round((new Date(ret) - new Date(dep)) / 86400000);
+  // Guess weather from selected month
+  const depMonth = dep ? new Date(dep).getMonth() : -1;
+  const calData  = st.calData;
+  let weather = 'mild';
+  if (calData && calData.months && depMonth >= 0) {
+    const temp = calData.months[depMonth]?.temp || '';
+    const maxTemp = parseInt(temp.split('~')[1]) || 20;
+    if (maxTemp >= 32) weather = 'hot';
+    else if (maxTemp >= 24) weather = 'sunny';
+    else if (maxTemp >= 15) weather = 'mild';
+    else if (maxTemp >= 5)  weather = 'cold';
+    else weather = 'snow';
+    // Check if avoid month (rain season)
+    if (calData.months[depMonth]?.r === 'avoid' && weather === 'hot') weather = 'rain';
+  }
+  localStorage.setItem('tripai_flight', JSON.stringify({
+    dest: st.dest, depDate: dep, retDate: ret, nights, weather,
+  }));
+}
+
 /* ── Booking links ── */
 function updateBooking() {
   const dep = document.getElementById('dep-date').value;
   const ret = document.getElementById('ret-date').value;
+  saveFlightData();
   const dest = st.dest;
   const iata = st.iata;
 
