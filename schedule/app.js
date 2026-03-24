@@ -118,8 +118,7 @@ function onDateChange() {
   if (!dep || !ret) return;
   const nights = Math.round((new Date(ret) - new Date(dep)) / 86400000);
   if (nights < 1) { toast('귀국일이 출발일보다 빨라요'); return; }
-  document.getElementById('nights-num').textContent = nights;
-  document.getElementById('date-nights').style.display = 'block';
+  document.getElementById('date-nights').textContent = `${nights}박`;
   const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
   document.getElementById('date-summary').textContent = `${fmt(dep)} 출발 → ${fmt(ret)} 귀국 · ${nights}박 ${nights + 1}일`;
 }

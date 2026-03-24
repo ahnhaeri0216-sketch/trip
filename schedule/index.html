@@ -55,19 +55,19 @@
 
       <div class="setup-section">
         <div class="setup-label">여행 날짜</div>
-        <div class="date-row">
-          <div class="date-field">
-            <div class="date-field-label">✈️ 출발일</div>
-            <input class="s-input date-input" id="dep-date" type="date" onchange="onDateChange()" />
+        <div class="date-range-card">
+          <div class="date-half">
+            <div class="date-half-label">✈️ 출발</div>
+            <input class="date-half-input" id="dep-date" type="date" onchange="onDateChange()" />
           </div>
-          <div class="date-arrow">→</div>
-          <div class="date-field">
-            <div class="date-field-label">🏠 귀국일</div>
-            <input class="s-input date-input" id="ret-date" type="date" onchange="onDateChange()" />
+          <div class="date-divider">
+            <div class="date-divider-line"></div>
+            <div class="date-divider-nights" id="date-nights">5박</div>
+            <div class="date-divider-line"></div>
           </div>
-          <div class="date-nights" id="date-nights" style="display:none">
-            <div class="nights-num" id="nights-num">3</div>
-            <div class="nights-label">박</div>
+          <div class="date-half">
+            <div class="date-half-label">🏠 귀국</div>
+            <input class="date-half-input" id="ret-date" type="date" onchange="onDateChange()" />
           </div>
         </div>
         <div class="date-summary" id="date-summary"></div>

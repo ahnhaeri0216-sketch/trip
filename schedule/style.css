@@ -237,36 +237,43 @@ body {
   background: var(--s2);
 }
 
-/* Date picker row */
-.date-row {
-  display: flex; align-items: flex-end; gap: 10px;
+/* Date range card — unified */
+.date-range-card {
+  display: flex; align-items: stretch;
+  background: var(--s1); border: 1.5px solid var(--border2);
+  border-radius: var(--r); overflow: hidden;
 }
-.date-field {
-  flex: 1; display: flex; flex-direction: column; gap: 6px;
+.date-half {
+  flex: 1; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px;
 }
-.date-field-label {
+.date-half:first-child { border-right: 1px solid var(--border); }
+.date-half-label {
   font-size: 10px; font-weight: 700; color: var(--muted);
 }
-.date-input {
-  width: 100%;
-  color-scheme: dark;
+.date-half-input {
+  background: transparent; border: none;
+  color: var(--text); font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 700; outline: none;
+  color-scheme: dark; width: 100%; cursor: pointer;
 }
-.date-arrow {
-  font-size: 18px; color: var(--dim);
-  padding-bottom: 12px; flex-shrink: 0;
+.date-divider {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px;
+  padding: 0 10px; min-width: 52px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
 }
-.date-nights {
-  flex-shrink: 0; text-align: center; padding-bottom: 8px;
+.date-divider-line {
+  width: 1px; flex: 1; background: var(--border2); max-height: 12px;
 }
-.nights-num {
-  font-size: 22px; font-weight: 800;
+.date-divider-nights {
+  font-size: 13px; font-weight: 800;
   background: linear-gradient(135deg, var(--coral), var(--sky));
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
-  line-height: 1;
-}
-.nights-label {
-  font-size: 10px; font-weight: 700; color: var(--muted); margin-top: 2px;
+  white-space: nowrap;
 }
 .date-summary {
   margin-top: 8px; font-size: 11px; color: var(--muted);
