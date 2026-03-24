@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>짐싸기 — AI 여행 플래너</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <nav class="nav">
+    <div class="nav-logo">🧳 Trip<span>AI</span></div>
+    <div style="font-size:11px;color:var(--muted)">짐싸기</div>
+    <a class="nav-back" href="../">← 홈으로</a>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">🧳 Step 04 · 짐싸기</div>
+    <h1>여행에 맞는 짐을<br><em>자동으로 정리해요</em></h1>
+    <p>여행지·날씨·활동 정보를 입력하면<br>빠뜨리기 쉬운 짐까지 체크리스트로 만들어드려요.</p>
+  </section>
+
+  <!-- TRIP CONTEXT -->
+  <div class="context-wrap">
+    <div class="context-card">
+      <div class="ctx-grid">
+        <div class="ctx-field">
+          <div class="field-label">여행지</div>
+          <input class="ctx-input" id="dest" type="text" placeholder="예: 도쿄, 파리, 발리..." />
+        </div>
+        <div class="ctx-field">
+          <div class="field-label">여행 일수</div>
+          <select class="ctx-select" id="days">
+            <option value="1">1박 2일</option>
+            <option value="2">2박 3일</option>
+            <option value="3" selected>3박 4일</option>
+            <option value="4">4박 5일</option>
+            <option value="5">5박 6일</option>
+            <option value="7">7박 8일</option>
+            <option value="10">10박 이상</option>
+          </select>
+        </div>
+        <div class="ctx-field">
+          <div class="field-label">날씨 / 계절</div>
+          <select class="ctx-select" id="weather">
+            <option value="sunny">☀️ 맑고 따뜻함</option>
+            <option value="hot">🌡️ 폭염·더움</option>
+            <option value="rain">🌧️ 비·우기</option>
+            <option value="cold">🧥 추움·겨울</option>
+            <option value="snow">❄️ 눈·설경</option>
+            <option value="mild">🌤️ 선선·쾌적</option>
+          </select>
+        </div>
+        <div class="ctx-field">
+          <div class="field-label">여행 테마</div>
+          <select class="ctx-select" id="theme">
+            <option value="일반">🗺️ 일반 관광</option>
+            <option value="미식">🍜 미식여행</option>
+            <option value="커플">💑 커플여행</option>
+            <option value="나홀로">🎒 나홀로여행</option>
+            <option value="가족">👨‍👩‍👧 가족여행</option>
+            <option value="액티비티">🏄 액티비티</option>
+            <option value="비즈니스">💼 비즈니스</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Activities -->
+      <div style="margin-top:16px">
+        <div class="field-label" style="margin-bottom:8px">포함된 활동 (복수 선택)</div>
+        <div class="act-chips" id="act-chips">
+          <button class="act-chip on" data-v="관광">🏛️ 관광</button>
+          <button class="act-chip on" data-v="맛집">🍽️ 맛집</button>
+          <button class="act-chip" data-v="해변">🏖️ 해변</button>
+          <button class="act-chip" data-v="등산">🥾 등산</button>
+          <button class="act-chip" data-v="쇼핑">🛍️ 쇼핑</button>
+          <button class="act-chip" data-v="수영">🏊 수영</button>
+          <button class="act-chip" data-v="캠핑">⛺ 캠핑</button>
+          <button class="act-chip" data-v="스키">⛷️ 스키</button>
+          <button class="act-chip" data-v="미술관">🖼️ 미술관</button>
+          <button class="act-chip" data-v="나이트라이프">🌙 나이트라이프</button>
+        </div>
+      </div>
+
+      <button class="gen-btn" onclick="generate()">🧳 짐 목록 자동 생성</button>
+      <div class="ai-note-inline">
+        <a onclick="openModal()">🔑 Gemini API Key</a> 설정 시 AI가 추가 개인화 팁을 제공해요
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-wrap" id="result-wrap">
+    <div class="result-header">
+      <div class="result-title">📋 나의 짐 목록</div>
+      <div class="result-actions">
+        <button class="action-btn" onclick="checkAll()">전체 체크</button>
+        <button class="action-btn" onclick="uncheckAll()">초기화</button>
+        <button class="action-btn primary" onclick="generate()">재생성</button>
+      </div>
+    </div>
+
+    <div class="trip-summary" id="trip-summary"></div>
+
+    <div class="progress-label" id="progress-label">0 / 0 준비 완료</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+
+    <div class="ai-tip" id="ai-tip">
+      <div class="ai-tip-title"><div class="ai-dot"></div>AI 추가 팁</div>
+      <div id="ai-tip-text"></div>
+    </div>
+
+    <div id="list-container"></div>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>🔑 Gemini API Key</h3>
+    <p>AI 개인화 짐 팁 생성에 사용됩니다.<br>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio에서 무료 발급 →</a>
+    </p>
+    <div class="field-label">API Key</div>
+    <input type="password" id="key-input" placeholder="AIza..." />
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="closeModal()">취소</button>
+      <button class="btn-primary" onclick="saveKey()">저장</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
