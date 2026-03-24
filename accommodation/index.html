@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>숙소 찾기 — AI 여행 플래너</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <nav class="nav">
+    <div class="nav-logo">🏨 Trip<span>AI</span></div>
+    <div style="font-size:11px;color:var(--muted)">숙소</div>
+    <a class="nav-back" href="../">← 홈으로</a>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">🏨 Step 02 · 숙소</div>
+    <h1>호텔을 <em>정하셨나요?</em></h1>
+    <p>이미 예약했다면 다음 단계로 바로 넘어가고,<br>아직이라면 주요 예약 사이트로 연결해드릴게요.</p>
+  </section>
+
+  <!-- DECISION -->
+  <div class="decision-wrap">
+    <div class="decision-grid">
+      <div class="decision-card yes" onclick="choose('yes')">
+        <div class="dc-icon">✅</div>
+        <div class="dc-title">네, 이미 예약했어요</div>
+        <div class="dc-desc">숙소 준비 완료! 일정 계획 단계로 바로 넘어가세요.</div>
+      </div>
+      <div class="decision-card no" onclick="choose('no')">
+        <div class="dc-icon">🔍</div>
+        <div class="dc-title">아직 못 정했어요</div>
+        <div class="dc-desc">여행지를 입력하면 AI가 추천 지역과 예약 사이트를 안내해요.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YES → 다음 단계 -->
+  <div class="next-panel" id="next-panel">
+    <div class="next-card">
+      <div class="next-card-text">
+        <div class="next-card-title">🎉 숙소 준비 완료!</div>
+        <div class="next-card-desc">이제 여행 일정을 블록으로 조립해볼 시간이에요.<br>AI 추천 플록을 드래그 앤 드롭으로 하루 일정을 완성해 보세요.</div>
+      </div>
+      <a class="next-btn" href="../scenario-2/">일정 짜러 가기 →</a>
+    </div>
+    <div class="skip-note">
+      <a class="skip-link" onclick="choose('no')">숙소를 바꾸고 싶다면 여기를 눌러주세요</a>
+    </div>
+  </div>
+
+  <!-- NO → Search -->
+  <div class="search-panel" id="search-panel">
+    <div class="field-label">여행지 입력</div>
+    <div class="input-row">
+      <input class="s-input" id="dest-input" type="text"
+        placeholder="예: 도쿄, 파리, 발리..."
+        onkeydown="if(event.key==='Enter')searchAccom()" />
+      <button class="s-btn" id="s-btn" onclick="searchAccom()">AI 추천 받기 ✦</button>
+    </div>
+
+    <!-- Style filters -->
+    <div class="filter-row" id="style-filters">
+      <button class="ftag on" data-v="가성비">💰 가성비</button>
+      <button class="ftag" data-v="감성숙소">🌿 감성숙소</button>
+      <button class="ftag" data-v="럭셔리">✨ 럭셔리</button>
+      <button class="ftag" data-v="시내중심">🏙️ 시내중심</button>
+      <button class="ftag" data-v="자연뷰">🌄 자연뷰</button>
+      <button class="ftag" data-v="에어비앤비">🏡 에어비앤비</button>
+    </div>
+
+    <!-- AI recommendation -->
+    <div class="ai-rec" id="ai-rec">
+      <div class="ai-rec-title"><div class="ai-dot"></div>AI 숙소 추천</div>
+      <div id="ai-rec-text"></div>
+    </div>
+
+    <div class="spinner-wrap" id="spinner" style="display:none">
+      <div class="spinner"></div>
+      <span>AI가 최적 숙소 지역을 분석 중...</span>
+    </div>
+  </div>
+
+  <!-- BOOKING -->
+  <div class="booking-section" id="booking-section">
+    <div class="section-title">숙소 예약 사이트</div>
+    <div class="booking-grid" id="booking-grid"></div>
+    <div class="skip-note" style="margin-top:20px">
+      <a class="skip-link" href="../scenario-2/">숙소 예약 후 일정 짜러 가기 →</a>
+    </div>
+  </div>
+
+  <div class="api-note">
+    <a onclick="openModal()">🔑 Gemini API Key 설정</a>으로 AI 숙소 지역 추천을 받아보세요
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>🔑 Gemini API Key</h3>
+    <p>AI 숙소 지역 추천에 사용돼요. 브라우저 localStorage에만 저장됩니다.<br>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio에서 무료 발급 →</a>
+    </p>
+    <div class="field-label">API Key</div>
+    <input type="password" id="key-input" placeholder="AIza..." />
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="closeModal()">취소</button>
+      <button class="btn-primary" onclick="saveKey()">저장</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
