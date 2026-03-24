@@ -171,66 +171,168 @@ function goSetup() {
 function buildMainScreen() {
   document.getElementById('topbar-dest').textContent  = `✈ ${st.dest}`;
   document.getElementById('topbar-theme').textContent = `${st.theme} 테마`;
-
-  buildDayTabs();
   renderBlocks();
-  switchDay(1);
+  renderMultiTimeline();
 }
 
-/* Day tabs — rich cards ── */
-function buildDayTabs() {
-  const dep = localStorage.getItem('tripai_flight')
-    ? JSON.parse(localStorage.getItem('tripai_flight')).depDate : null;
-  const tabs = document.getElementById('day-tabs');
-  tabs.innerHTML = '';
+/* ── Multi-day grid ── */
+function getDepDate() {
+  try { return JSON.parse(localStorage.getItem('tripai_flight') || '{}').depDate || null; } catch { return null; }
+}
+
+function renderMultiTimeline() {
+  const panel = document.getElementById('panel-multi');
+  panel.innerHTML = '';
+  const dep = getDepDate();
+
+  // Header — sticky row with day columns
+  const header = document.createElement('div');
+  header.className = 'multi-header';
+
+  // Time gutter placeholder
+  const gutterHead = document.createElement('div');
+  gutterHead.className = 'multi-gutter-head';
+  header.appendChild(gutterHead);
+
   for (let d = 1; d <= st.dayCount; d++) {
-    const card = document.createElement('div');
-    card.className = `day-tab${d === 1 ? ' active' : ''}`;
-    card.dataset.day = d;
-    card.onclick = () => switchDay(d);
-    // Calculate calendar date for this day
     let dateStr = '';
     if (dep) {
       const dt = new Date(dep + 'T00:00:00');
       dt.setDate(dt.getDate() + d - 1);
       dateStr = dt.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' });
     }
-    card.innerHTML = `
-      <div class="day-tab-num">${d}일차</div>
-      ${dateStr ? `<div class="day-tab-date">${dateStr}</div>` : ''}
-      <div class="day-tab-summary" id="day-summary-${d}"></div>`;
-    tabs.appendChild(card);
-  }
-  refreshDayTabs();
-}
+    const dayItems = Object.values(st.schedule[d] || {});
+    const dots = dayItems.slice(0,5).map(p => {
+      const c = {관광:'var(--cat-sight)',맛집:'var(--cat-food)',카페:'var(--cat-cafe)',쇼핑:'var(--cat-shop)',휴식:'var(--cat-rest)'}[p.cat]||'var(--coral)';
+      return `<span class="head-dot" style="background:${c}"></span>`;
+    }).join('');
 
-function refreshDayTabs() {
+    const h = document.createElement('div');
+    h.className = 'multi-day-head';
+    h.id = `multi-head-${d}`;
+    h.innerHTML = `
+      <div class="mdh-top">
+        <span class="mdh-num">${d}일차</span>
+        <button class="mdh-clear" onclick="clearDay(${d})">초기화</button>
+      </div>
+      ${dateStr ? `<div class="mdh-date">${dateStr}</div>` : ''}
+      <div class="mdh-dots" id="mdh-dots-${d}">${dots || '<span class="mdh-empty">비어있음</span>'}</div>`;
+    header.appendChild(h);
+  }
+  panel.appendChild(header);
+
+  // Body — scrollable, grid: gutter + N day columns
+  const body = document.createElement('div');
+  body.className = 'multi-body';
+  body.style.gridTemplateColumns = `44px repeat(${st.dayCount}, 1fr)`;
+
+  // Time gutter
+  const gutter = document.createElement('div');
+  gutter.className = 'multi-gutter';
+  TIMES.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'multi-time-label';
+    el.textContent = t;
+    gutter.appendChild(el);
+  });
+  body.appendChild(gutter);
+
+  // Day columns
+  const destKey = Object.keys(PLACE_DB).find(k => st.dest.includes(k)) || '_default';
   for (let d = 1; d <= st.dayCount; d++) {
-    const items = Object.values(st.schedule[d] || {});
-    const el = document.getElementById(`day-summary-${d}`);
-    if (!el) continue;
-    if (!items.length) {
-      el.innerHTML = '<span style="font-size:9px;color:var(--dim)">비어있음</span>';
-    } else {
-      const dots = items.slice(0,5).map(p => {
-        const c = { '관광':'var(--cat-sight)','맛집':'var(--cat-food)','카페':'var(--cat-cafe)','쇼핑':'var(--cat-shop)','휴식':'var(--cat-rest)' }[p.cat] || 'var(--coral)';
-        return `<span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block"></span>`;
-      }).join('');
-      el.innerHTML = `${dots}<span style="font-size:9px;color:var(--muted);margin-left:3px">${items.length}개</span>`;
-    }
+    const col = document.createElement('div');
+    col.className = 'multi-day-col';
+
+    TIMES.forEach(time => {
+      const drop = document.createElement('div');
+      drop.className = 'slot-drop';
+      drop.dataset.time = time;
+      drop.dataset.day  = d;
+
+      const placed = st.schedule[d][time];
+      if (placed) renderSlotBlock(drop, placed, time, d);
+
+      drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('drag-over'); });
+      drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+      drop.addEventListener('drop', e => {
+        e.preventDefault(); drop.classList.remove('drag-over');
+        const pid   = e.dataTransfer.getData('placeId');
+        const dKey  = e.dataTransfer.getData('destKey');
+        const place = PLACE_DB[dKey || destKey]?.find(p => p.id === pid) || PLACE_DB['_default']?.find(p => p.id === pid);
+        if (!place) return;
+        st.schedule[d][time] = place;
+        renderSlotBlock(drop, place, time, d);
+        refreshDayHead(d);
+        renderMap();
+        toast(`✅ ${place.name} — ${d}일차 ${time}`);
+      });
+      col.appendChild(drop);
+    });
+    body.appendChild(col);
+  }
+  panel.appendChild(body);
+}
+
+function refreshDayHead(d) {
+  const el = document.getElementById(`mdh-dots-${d}`);
+  if (!el) return;
+  const items = Object.values(st.schedule[d] || {});
+  if (!items.length) {
+    el.innerHTML = '<span class="mdh-empty">비어있음</span>';
+  } else {
+    el.innerHTML = items.slice(0,5).map(p => {
+      const c = {관광:'var(--cat-sight)',맛집:'var(--cat-food)',카페:'var(--cat-cafe)',쇼핑:'var(--cat-shop)',휴식:'var(--cat-rest)'}[p.cat]||'var(--coral)';
+      return `<span class="head-dot" style="background:${c}"></span>`;
+    }).join('') + `<span class="mdh-count">${items.length}개</span>`;
   }
 }
 
-function switchDay(d) {
-  st.currentDay = d;
-  document.querySelectorAll('.day-tab').forEach((t, i) => t.classList.toggle('active', i + 1 === d));
-  document.getElementById('mid-day-label').textContent = `${d}일차 타임라인`;
-  renderTimeline();
-  renderMap();
-  refreshDayTabs();
+function renderSlotBlock(drop, place, time, day) {
+  drop.innerHTML = '';
+  const daySchedule = Object.entries(st.schedule[day]).sort(([a],[b]) => a.localeCompare(b));
+  const idx   = daySchedule.findIndex(([t]) => t === time) + 1;
+  const color = CAT_COLOR[place.cat] || '#fff';
+  const tc    = CAT_TEXT[place.cat]  || '#fff';
+  const block = document.createElement('div');
+  block.className = 'slot-block';
+  block.style.background = `${color}22`;
+  block.style.border     = `1px solid ${color}55`;
+  block.innerHTML = `
+    <div class="slot-block-num" style="background:${color};color:${tc}">${idx}</div>
+    <span style="font-size:13px">${place.emoji}</span>
+    <span style="flex:1;font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${place.name}</span>
+    <button class="slot-block-remove" onclick="removeBlock(${day},'${time}')">×</button>`;
+  drop.appendChild(block);
 }
 
-/* ── Left panel: place blocks ── */
+function removeBlock(day, time) {
+  delete st.schedule[day][time];
+  // re-render only that day column
+  const drops = document.querySelectorAll(`.slot-drop[data-day="${day}"]`);
+  drops.forEach(drop => {
+    const t = drop.dataset.time;
+    drop.innerHTML = '';
+    const placed = st.schedule[day][t];
+    if (placed) renderSlotBlock(drop, placed, t, day);
+  });
+  refreshDayHead(day);
+  renderMap();
+  toast('블록이 제거됐어요');
+}
+
+function clearDay(d) {
+  st.schedule[d] = {};
+  const drops = document.querySelectorAll(`.slot-drop[data-day="${d}"]`);
+  drops.forEach(drop => { drop.innerHTML = ''; });
+  refreshDayHead(d);
+  renderMap();
+  toast(`${d}일차 초기화됐어요`);
+}
+
+/* ── Map modal ── */
+function openMapModal()  { document.getElementById('map-modal-overlay').classList.add('open'); renderMap(); }
+function closeMapModal() { document.getElementById('map-modal-overlay').classList.remove('open'); }
+
 function renderBlocks() {
   const key    = Object.keys(PLACE_DB).find(k => st.dest.includes(k)) || '_default';
   const places = PLACE_DB[key];
