@@ -29,8 +29,8 @@ const st = {
   destLatLng: null,    // { lat, lng }
   theme:      '',
   dayCount:   3,
-  mapsApiKey: '여기에_직접_구글맵_API_키를_입력하세요',
-  geminiApiKey: '',
+  mapsApiKey: 'AIzaSyDWvBKutIbpFhSykrmD5w3870p_Ix_hdVw',
+  geminiApiKey: 'serverless', // Vercel 서버리스 함수 사용 (프론트엔드 키 불필요)
   activeCats: new Set(['관광','맛집','카페','쇼핑','휴식']),
   schedule:   {},      // { day: { slotTime: placeObj } }
   places:     [],      // AI 추천 place blocks
@@ -664,12 +664,7 @@ function buildMainScreen() {
 async function fetchGeminiPlaces(retry = 0) {
   showBlocksLoading(true);
 
-  if (!st.geminiApiKey) {
-    showBlocksLoading(false);
-    toast('💡 Gemini Key를 등록하면 실제 AI 추천을 받을 수 있어요');
-    renderBlocksEmpty('Gemini API Key를 등록해주세요');
-    return;
-  }
+  // Gemini API는 서버리스 함수(/api/gemini)를 통해 호출하므로 프론트엔드 키 체크 불필요
 
   const categories = [...st.activeCats];
   const prompt = `
@@ -1809,11 +1804,8 @@ function openAIPanel() {
   if (summaryBox) summaryBox.style.display = 'none';
   document.getElementById('ai-panel-sub').textContent    = '동선, 카테고리 흐름, 시간대를 분석해 최적 순서를 추천해드려요.';
 
-  if (st.geminiApiKey) {
-    fetchAIOptimization(dayItems, day);
-  } else {
-    setTimeout(() => showFallbackOptimization(dayItems, day), 1000);
-  }
+  // 서버리스 함수를 통해 AI 최적화 호출 (항상 시도)
+  fetchAIOptimization(dayItems, day);
 }
 
 /* ── 최근접 이웃(Nearest Neighbor) 동선 최적화 ── */
@@ -1865,7 +1857,7 @@ async function fetchAIOptimization(dayItems, day) {
   const isSameOrder  = optimizedOrder.every((n, i) => n === currentOrder[i]);
 
   // ② Gemini에게는 "이 최적 순서를 왜 추천하는지 설명"만 요청
-  if (!st.geminiApiKey || isSameOrder) {
+  if (isSameOrder) {
     const sameMsg = isSameOrder
       ? '현재 순서가 이미 동선상 최적이에요 ✦'
       : `동선 ${beforeKm}km → ${afterKm}km (약 ${saved}km 단축)`;
@@ -2478,8 +2470,10 @@ function closeAIPanel() {
 
 /* ══ Init ══ */
 (function init() {
-  st.mapsApiKey   = localStorage.getItem('tripai_maps_key') || '여기에_직접_구글맵_API_키를_입력하세요';
-  // st.geminiApiKey = localStorage.getItem('tripai_key') || ''; // Vercel 서버리스 사용으로 프론트엔드 키 제거
+  // localStorage에 사용자가 직접 등록한 키가 있으면 우선 사용, 없으면 코드 내장 키 유지
+  const savedMapsKey = localStorage.getItem('tripai_maps_key');
+  if (savedMapsKey) st.mapsApiKey = savedMapsKey;
+  // geminiApiKey는 Vercel 서버리스 함수 사용으로 프론트엔드 키 불필요
 
   updateKeyStatuses();
 
