@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <script>
+    const p = { id: 'test-id', _cloud: true };
+    document.write(`<button onclick="event.stopPropagation();deleteProject('${p.id}', ${p._cloud ? 'true' : 'false'})">Delete</button>`);
+  </script>
+</body>
+</html>

@@ -1134,8 +1134,9 @@ function _addUserPlace(name, lat, lng, placeId, rating, address) {
 }
 
 function removeUserPlace(id) {
-  st.userPlaces = st.userPlaces.filter(p => p.id !== id);
+  st.userPlaces = st.userPlaces.filter(p => String(p.id) !== String(id));
   renderBlocks();
+  saveCurrentProject();
 }
 
 function clearAllUserPlaces() {
@@ -1221,7 +1222,7 @@ function makeBlockEl(p, isUser) {
     ? `<span style="margin-left:auto;font-size:10px;color:#ffeaa7;font-weight:700;">⭐ ${p.rating.toFixed(1)}</span>`
     : '';
   const removeBtn = isUser
-    ? `<button class="user-block-remove" onclick="removeUserPlace('${p.id}')" title="삭제">×</button>`
+    ? `<button class="user-block-remove" draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); removeUserPlace('${p.id}')" title="삭제">×</button>`
     : '';
 
   el.innerHTML = `
@@ -1418,7 +1419,7 @@ function renderSlotBlock(drop, place, time, day) {
     <div class="slot-block-num" style="background:${color};color:${tc}">${idx}</div>
     <span style="font-size:13px">${place.emoji}</span>
     <span style="flex:1;font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${place.name}</span>
-    <button class="slot-block-remove" onclick="removeBlock(${day},'${time}')">×</button>`;
+    <button class="slot-block-remove" draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); removeBlock(${day},'${time}')">×</button>`;
 
   // 타임라인 블록 드래그시작: 장소 ID + 출발지 day/time 전달
   block.addEventListener('dragstart', e => {
@@ -2229,7 +2230,7 @@ async function loadProjects() {
       const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit' }) : '';
       
       return `
-      <div class="project-card" onclick="openProject('${p.id}', ${p._cloud ? 'true' : 'false'})">
+      <div class="project-card" onclick="openProject('${p.id}', ${!!p._cloud})">
         <div class="project-card-dest">✈ ${dest || '여행'} ${p._cloud ? '☁️' : ''}</div>
         <div class="project-card-meta">
           ${dateStr ? `<div class="project-card-dates">${dateStr}</div>` : ''}
@@ -2241,7 +2242,7 @@ async function loadProjects() {
         </div>
         <div class="project-card-footer">
           <div class="project-card-updated">수정: ${updated}</div>
-          <button class="project-card-delete" onclick="event.stopPropagation();deleteProject('${p.id}', ${p._cloud ? 'true' : 'false'})">&#x2715; 삭제</button>
+          <button class="project-card-delete" onclick="event.stopPropagation();deleteProject('${p.id}', ${!!p._cloud})">&#x2715; 삭제</button>
         </div>
       </div>`;
     }).join('');
@@ -2405,53 +2406,56 @@ let _lastDeleteTime = 0;
 async function deleteProject(pid, isCloud) {
   if (_isDeleting || (Date.now() - _lastDeleteTime < 500)) return;
   _isDeleting = true;
+  _lastDeleteTime = Date.now();
 
-  // 클릭 이벤트 전파가 완전히 끝난 다음 tick에서 confirm을 띄워 브라우저 버그/충돌 방지
-  await new Promise(resolve => setTimeout(resolve, 10));
+  try {
+    await new Promise(resolve => setTimeout(resolve, 10));
 
-  if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
-    _isDeleting = false;
-    _lastDeleteTime = Date.now();
-    return;
-  }
-  
-  if (isCloud && window.currentUser) {
-    try {
+    if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
+      _isDeleting = false;
+      return;
+    }
+
+    let cloudOk = true;
+    if (isCloud && window.currentUser) {
       const { error } = await window.supabaseClient
         .from('projects')
         .delete()
         .eq('id', pid);
-      if (error) throw error;
-      toast('🗑 클라우드에서 삭제되었습니다.');
-    } catch (err) {
-      console.error('삭제 도중 에러:', err);
-      toast('삭제에 실패했습니다.');
-      return;
+      if (error) {
+        console.error('클라우드 삭제 에러:', error);
+        toast(`⚠️ 삭제 오류: ${error.message || JSON.stringify(error)}`);
+        cloudOk = false;
+      }
     }
-  }
 
-  // 로컬에서도 삭제 처리 (클라우드 삭제 성공 여부와 무관하게 로컬의 잔재를 지움)
-  let list = [];
-  const raw = localStorage.getItem('tripai_projects');
-  if (raw) list = JSON.parse(raw);
-  const idx = list.findIndex(p => p.id === pid);
-  if (idx > -1) {
-    list[idx].deleted = true; // 소프트 딜리트
-    localStorage.setItem('tripai_projects', JSON.stringify(list));
+    // 클라우드 실패 시에도 로컬 잔재는 제거
+    const raw = localStorage.getItem('tripai_projects');
+    let list = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex(p => p.id === pid);
+    if (idx > -1) {
+      list[idx].deleted = true;
+      localStorage.setItem('tripai_projects', JSON.stringify(list));
+    }
+    localStorage.removeItem(`tripai_schedule_${pid}`);
+    localStorage.removeItem(`tripai_flight_${pid}`);
+    localStorage.removeItem(`tripai_places_${pid}`);
+    localStorage.removeItem(`tripai_userplaces_${pid}`);
+    localStorage.removeItem(`tripai_sched_${pid}`);
+
+    if (cloudOk) {
+      toast('🗑 삭제되었습니다.');
+    }
+
+    loadProjects();
+  } catch (e) {
+    console.error('deleteProject 예외:', e);
+    toast(`❌ 삭제 실패: ${e.message || String(e)}`);
+    loadProjects(); // 실패해도 목록은 갱신
+  } finally {
+    _isDeleting = false;
+    _lastDeleteTime = Date.now();
   }
-  
-  // 세부 데이터 하드 삭제
-  localStorage.removeItem(`tripai_schedule_${pid}`);
-  localStorage.removeItem(`tripai_flight_${pid}`);
-  localStorage.removeItem(`tripai_places_${pid}`);
-  localStorage.removeItem(`tripai_userplaces_${pid}`);
-  localStorage.removeItem(`tripai_sched_${pid}`);
-  
-  if (!isCloud || !window.currentUser) {
-    toast('🗑 로컬에서 삭제되었습니다.');
-  }
-  
-  loadProjects();
 }
 
 function clearAIPreviewMap() {
