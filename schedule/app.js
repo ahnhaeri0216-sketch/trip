@@ -2242,7 +2242,7 @@ async function loadProjects() {
         </div>
         <div class="project-card-footer">
           <div class="project-card-updated">수정: ${updated}</div>
-          <button class="project-card-delete" onclick="event.stopPropagation();deleteProject('${p.id}', ${!!p._cloud})">&#x2715; 삭제</button>
+          <button class="project-card-delete" onclick="(function(e){ e.stopImmediatePropagation(); e.stopPropagation(); e.preventDefault(); deleteProject('${p.id}', ${!!p._cloud}); return false; })(event)">&times; 삭제</button>
         </div>
       </div>`;
     }).join('');
@@ -2409,8 +2409,6 @@ async function deleteProject(pid, isCloud) {
   _lastDeleteTime = Date.now();
 
   try {
-    await new Promise(resolve => setTimeout(resolve, 10));
-
     if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
       _isDeleting = false;
       return;
