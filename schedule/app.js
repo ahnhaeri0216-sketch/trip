@@ -2166,9 +2166,8 @@ async function loadProjects() {
       if (raw) list = JSON.parse(raw);
     }
   } else {
-    // 💾 로컬에서 불러오기
-    const raw = localStorage.getItem('tripai_projects');
-    if (raw) list = JSON.parse(raw);
+    // 로그아웃 상태에서는 사용자의 기록을 보이지 않게 함
+    list = [];
   }
 
   // 삭제처리 필터링 (로컬)
@@ -2177,6 +2176,17 @@ async function loadProjects() {
   if (list.length === 0) {
     grid.style.display = 'none';
     empty.style.display = 'flex';
+
+    // 로그인 여부에 따라 빈 화면 문구 변경
+    const emptyTitle = empty.querySelector('.projects-empty-title');
+    const emptySub = empty.querySelector('.projects-empty-sub');
+    if (!window.currentUser) {
+      if (emptyTitle) emptyTitle.textContent = '로그인이 필요합니다';
+      if (emptySub) emptySub.textContent = '로그인하여 나만의 여행 기록을 확인해보세요';
+    } else {
+      if (emptyTitle) emptyTitle.textContent = '아직 저장된 여행이 없어요';
+      if (emptySub) emptySub.textContent = '새 여행을 만들어 일정을 계획해보세요';
+    }
   } else {
     empty.style.display = 'none';
     grid.style.display = 'grid';
@@ -2396,23 +2406,27 @@ async function deleteProject(pid, isCloud) {
       toast('삭제에 실패했습니다.');
       return;
     }
-  } else {
-    // 로컬 삭제
-    let list = [];
-    const raw = localStorage.getItem('tripai_projects');
-    if (raw) list = JSON.parse(raw);
-    const idx = list.findIndex(p => p.id === pid);
-    if (idx > -1) {
-      list[idx].deleted = true; // 소프트 딜리트
-      localStorage.setItem('tripai_projects', JSON.stringify(list));
-      
-      localStorage.removeItem(`tripai_schedule_${pid}`);
-      localStorage.removeItem(`tripai_flight_${pid}`);
-      localStorage.removeItem(`tripai_places_${pid}`);
-      localStorage.removeItem(`tripai_userplaces_${pid}`);
-      localStorage.removeItem(`tripai_sched_${pid}`);
-      toast('🗑 로컬에서 삭제되었습니다.');
-    }
+  }
+
+  // 로컬에서도 삭제 처리 (클라우드 삭제 성공 여부와 무관하게 로컬의 잔재를 지움)
+  let list = [];
+  const raw = localStorage.getItem('tripai_projects');
+  if (raw) list = JSON.parse(raw);
+  const idx = list.findIndex(p => p.id === pid);
+  if (idx > -1) {
+    list[idx].deleted = true; // 소프트 딜리트
+    localStorage.setItem('tripai_projects', JSON.stringify(list));
+  }
+  
+  // 세부 데이터 하드 삭제
+  localStorage.removeItem(`tripai_schedule_${pid}`);
+  localStorage.removeItem(`tripai_flight_${pid}`);
+  localStorage.removeItem(`tripai_places_${pid}`);
+  localStorage.removeItem(`tripai_userplaces_${pid}`);
+  localStorage.removeItem(`tripai_sched_${pid}`);
+  
+  if (!isCloud || !window.currentUser) {
+    toast('🗑 로컬에서 삭제되었습니다.');
   }
   
   loadProjects();
