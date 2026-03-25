@@ -415,6 +415,7 @@ async function startPlanning() {
     } else {
       await fetchGeminiPlaces();
     }
+    saveCurrentProject(); // 완료 시 자동 저장
   } catch(err) {
     console.error('[startPlanning]', err);
     toast(`⚠️ 오류: ${err.message}`);
@@ -557,6 +558,16 @@ function buildMainScreen() {
   renderMultiTimeline();
   initMapPanel();
   initDivider();
+  // 톱바에 프로젝트 목록 버튼 삽입
+  let backBtn = document.getElementById('topbar-projects-btn');
+  if (!backBtn) {
+    backBtn = document.createElement('button');
+    backBtn.id = 'topbar-projects-btn';
+    backBtn.className = 'topbar-projects-btn';
+    backBtn.textContent = '← 목록';
+    backBtn.onclick = goProjects;
+    document.querySelector('.topbar')?.prepend(backBtn);
+  }
   // 플로팅 AI 버튼 삽입 (타임라인 패널 우측 하단)
   let fab = document.getElementById('ai-fab');
   if (!fab) {
@@ -1354,6 +1365,7 @@ function removeBlock(day, time) {
   });
   refreshDayHead(day);
   if (st.mapsLoaded) renderGoogleMap();
+  saveCurrentProject();
   toast('블록이 제거됐어요');
 }
 
@@ -2068,10 +2080,16 @@ function closeAIPanel() {
   document.getElementById('ret-date').value = fmt(d2);
   onDateChange();
 
+  // 앱 시작: Projects 홈으로
+  initApp();
+
   // 브라우저 뒤로가기 처리
   window.addEventListener('popstate', (e) => {
     const screen = e.state?.screen;
-    if (screen === 'setup' || !screen) {
+    if (screen === 'projects' || !screen) {
+      showProjectsScreen();
+    } else if (screen === 'setup') {
+      document.getElementById('projects-screen').style.display = 'none';
       document.getElementById('setup-screen').style.display = '';
       document.getElementById('main-screen').classList.remove('visible');
     } else if (screen === 'main') {
@@ -2080,4 +2098,140 @@ function closeAIPanel() {
     }
   });
 })();
+
+/* ════════ PROJECTS 관리 ════════ */
+
+function _loadProjects() {
+  try { return JSON.parse(localStorage.getItem('tripai_projects') || '[]'); }
+  catch { return []; }
+}
+function _saveProjects(p) { localStorage.setItem('tripai_projects', JSON.stringify(p)); }
+
+function initApp() { showProjectsScreen(); }
+
+function showProjectsScreen() {
+  document.getElementById('projects-screen').style.display = '';
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('main-screen').classList.remove('visible');
+  renderProjectsScreen();
+}
+
+function renderProjectsScreen() {
+  const projects = _loadProjects();
+  const grid  = document.getElementById('projects-grid');
+  const empty = document.getElementById('projects-empty');
+  grid.innerHTML = '';
+  if (!projects.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  projects.slice().reverse().forEach(proj => {
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    card.onclick = () => openProject(proj.id);
+    const nights = proj.dayCount || 0;
+    const fmtD = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '';
+    const dateStr = (proj.depDate && proj.retDate) ? `${fmtD(proj.depDate)} → ${fmtD(proj.retDate)} · ${nights}박 ${nights+1}일` : '';
+    const updated = proj.updatedAt ? new Date(proj.updatedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    card.innerHTML = `
+      <div class="project-card-dest">✈ ${proj.dest || '여행'}</div>
+      <div class="project-card-meta">
+        <div class="project-card-dates">${dateStr}</div>
+        <div class="project-card-chips">
+          ${proj.theme ? `<span class="project-card-chip">${proj.theme}</span>` : ''}
+          ${proj.airport ? `<span class="project-card-chip sky">✈ ${proj.airport}</span>` : ''}
+          ${proj.hotel ? `<span class="project-card-chip sky">🏨 ${proj.hotel}</span>` : ''}
+        </div>
+      </div>
+      <div class="project-card-footer">
+        <div class="project-card-updated">수정: ${updated}</div>
+        <button class="project-card-delete" onclick="event.stopPropagation();deleteProject('${proj.id}')">&#x2715; 삭제</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function openProject(id) {
+  const projects = _loadProjects();
+  const proj = projects.find(p => p.id === id);
+  if (!proj) { toast('프로젝트를 찾을 수 없어요'); return; }
+
+  st.dest      = proj.dest      || '';
+  st.destLatLng= proj.destLatLng|| null;
+  st.theme     = proj.theme     || '';
+  st.dayCount  = proj.dayCount  || 1;
+  st.airport   = proj.airport   || '';
+  st.hotel     = proj.hotel     || '';
+  st.hotelLatLng  = proj.hotelLatLng  || null;
+  st.hotelAddress = proj.hotelAddress || '';
+  st.schedule  = proj.schedule  || {};
+  st.places    = proj.places    || [];
+  st.userPlaces= proj.userPlaces|| [];
+  st._currentProjectId = id;
+
+  localStorage.setItem('tripai_flight', JSON.stringify({
+    dest: st.dest, depDate: proj.depDate, retDate: proj.retDate,
+    nights: st.dayCount, airport: st.airport, hotel: st.hotel,
+  }));
+
+  document.getElementById('projects-screen').style.display = 'none';
+  buildMainScreen();
+  renderBlocks();
+  document.getElementById('main-screen').classList.add('visible');
+  history.pushState({ screen: 'main' }, '');
+  if (st.mapsLoaded) renderGoogleMap();
+}
+
+function createNewProject() {
+  st.dest=''; st.destLatLng=null; st.theme='';
+  st.dayCount=1; st.airport=''; st.hotel='';
+  st.hotelLatLng=null; st.hotelAddress='';
+  st.schedule={}; st.places=[]; st.userPlaces=[];
+  st._currentProjectId=null;
+
+  _currentStep = 1;
+  document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-1')?.classList.add('active');
+  const pb = document.getElementById('setup-progress-bar');
+  if (pb) pb.style.width = '20%';
+  const si = document.getElementById('setup-step-indicator');
+  if (si) si.textContent = '1 / 5';
+
+  document.getElementById('projects-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = '';
+  history.pushState({ screen: 'setup' }, '');
+}
+
+function saveCurrentProject() {
+  if (!st.dest || !st.dayCount) return;
+  const projects = _loadProjects();
+  const id = st._currentProjectId || `trip-${Date.now()}`;
+  st._currentProjectId = id;
+  const flight = JSON.parse(localStorage.getItem('tripai_flight') || '{}');
+  const idx = projects.findIndex(p => p.id === id);
+  const proj = {
+    id, dest: st.dest, destLatLng: st.destLatLng,
+    theme: st.theme, dayCount: st.dayCount,
+    airport: st.airport, hotel: st.hotel,
+    hotelLatLng: st.hotelLatLng, hotelAddress: st.hotelAddress,
+    depDate: flight.depDate || '', retDate: flight.retDate || '',
+    schedule: st.schedule, places: st.places, userPlaces: st.userPlaces,
+    createdAt: (idx >= 0 ? projects[idx].createdAt : null) || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  if (idx >= 0) projects[idx] = proj; else projects.push(proj);
+  _saveProjects(projects);
+}
+
+function deleteProject(id) {
+  _saveProjects(_loadProjects().filter(p => p.id !== id));
+  renderProjectsScreen();
+  toast('여행이 삭제됩니다');
+}
+
+function goProjects() {
+  saveCurrentProject();
+  showProjectsScreen();
+  history.pushState({ screen: 'projects' }, '');
+}
+
 

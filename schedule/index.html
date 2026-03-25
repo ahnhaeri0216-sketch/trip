@@ -10,8 +10,39 @@
 
 <body>
 
+  <!-- ══ PROJECTS SCREEN ══ -->
+  <div id="projects-screen">
+    <div class="projects-inner">
+      <div class="projects-top">
+        <div class="projects-logo">Trip<span>AI</span></div>
+        <div class="projects-actions">
+          <button class="projects-new-btn" onclick="createNewProject()">
+            + 새 여행 만들기
+          </button>
+        </div>
+      </div>
+
+      <div class="projects-hero">
+        <h1>내 여행 <em>프로젝트</em></h1>
+        <p>저장된 여행을 선택하거나 새 여행을 시작해보세요</p>
+      </div>
+
+      <div class="projects-grid" id="projects-grid">
+        <!-- 카드는 JS로 렌더링 -->
+      </div>
+
+      <div class="projects-empty" id="projects-empty" style="display:none">
+        <div class="projects-empty-icon">🗺️</div>
+        <div class="projects-empty-title">아직 저장된 여행이 없어요</div>
+        <div class="projects-empty-sub">새 여행을 만들어 일정을 계획해보세요</div>
+        <button class="projects-new-btn" onclick="createNewProject()">+ 새 여행 시작하기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ SETUP SCREEN ══ -->
-  <div id="setup-screen">
+  <div id="setup-screen" style="display:none">
+
 
     <!-- Progress bar -->
     <div class="setup-progress">
