@@ -2390,8 +2390,16 @@ async function openProject(pid, isCloud) {
   }
 }
 
+let _isDeleting = false;
+
 async function deleteProject(pid, isCloud) {
-  if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
+  if (_isDeleting) return;
+  _isDeleting = true;
+
+  if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
+    _isDeleting = false;
+    return;
+  }
   
   if (isCloud && window.currentUser) {
     try {
