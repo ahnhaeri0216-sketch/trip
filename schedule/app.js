@@ -126,11 +126,20 @@ window.updateAuthUI = function() {
     }
   });
 
-  // 로그인 모달 닫기
+  // 로그인 상태가 변경될 때마다 화면 갱신
   if (user) {
     closeLoginModal();
-    // 로컬 데이터를 클라우드로 자동 마이그레이션 (백그라운드)
-    migrateLocalProjectsToCloud();
+    // 로컬 데이터를 클라우드로 자동 마이그레이션한 후 목록 갱신
+    migrateLocalProjectsToCloud().finally(() => {
+      if (document.getElementById('projects-screen').style.display !== 'none') {
+        loadProjects();
+      }
+    });
+  } else {
+    // 로그아웃 상태일 때도 갱신
+    if (document.getElementById('projects-screen').style.display !== 'none') {
+      loadProjects();
+    }
   }
 };
 
