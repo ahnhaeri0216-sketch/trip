@@ -5,77 +5,163 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>일정 계획 — AI 여행 플래너</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
 
 <body>
 
   <!-- ══ SETUP SCREEN ══ -->
   <div id="setup-screen">
-    <div class="setup-inner">
-      <div class="setup-badge">🗓️ Step 03 · 일정</div>
-      <h1>어떤 여행을<br><em>계획하시나요?</em></h1>
-      <p>테마를 선택하면 AI가 맞춤 장소 블록을 추천해드려요.</p>
 
-      <div class="setup-section">
-        <div class="setup-label">여행 테마 선택</div>
-        <div class="theme-grid">
-          <div class="theme-chip" data-v="미식여행" onclick="pickTheme(this)">
-            <div class="theme-chip-icon">🍜</div>
-            <div class="theme-chip-label">미식여행</div>
-          </div>
-          <div class="theme-chip" data-v="커플여행" onclick="pickTheme(this)">
-            <div class="theme-chip-icon">💑</div>
-            <div class="theme-chip-label">커플여행</div>
-          </div>
-          <div class="theme-chip" data-v="나홀로여행" onclick="pickTheme(this)">
-            <div class="theme-chip-icon">🎒</div>
-            <div class="theme-chip-label">나홀로여행</div>
-          </div>
-          <div class="theme-chip" data-v="가족여행" onclick="pickTheme(this)">
-            <div class="theme-chip-icon">👨‍👩‍👧</div>
-            <div class="theme-chip-label">가족여행</div>
-          </div>
-          <div class="theme-chip" data-v="액티비티" onclick="pickTheme(this)">
-            <div class="theme-chip-icon">🏄</div>
-            <div class="theme-chip-label">액티비티</div>
-          </div>
-          <div class="theme-chip" data-v="custom" onclick="pickTheme(this)">
-            <div class="theme-chip-icon">✏️</div>
-            <div class="theme-chip-label">직접 입력</div>
+    <!-- Progress bar -->
+    <div class="setup-progress">
+      <div class="setup-progress-bar" id="setup-progress-bar"></div>
+    </div>
+
+    <!-- Logo -->
+    <div class="setup-top">
+      <div class="setup-logo">🗓 Trip<span>AI</span></div>
+      <div class="setup-step-indicator" id="setup-step-indicator">1 / 5</div>
+    </div>
+
+    <!-- ── STEP 1: Destination ── -->
+    <div class="setup-step active" id="step-1">
+      <div class="setup-q-label">Q1</div>
+      <h2 class="setup-q">어디로 여행하시나요?</h2>
+      <p class="setup-q-hint">도시나 나라 이름을 입력해주세요</p>
+      <input class="setup-big-input" id="dest-input" type="text"
+        placeholder="예: 도쿄, 파리, 바르셀로나..." autocomplete="off" />
+      <div id="place-info-badge" style="display:none" class="place-info-badge"></div>
+      <div class="setup-nav">
+        <div></div>
+        <button class="setup-next-btn" onclick="stepNext(1)">다음 →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Airport ── -->
+    <div class="setup-step" id="step-2">
+      <div class="setup-q-label">Q2</div>
+      <h2 class="setup-q">어느 공항을 이용하시나요?</h2>
+      <p class="setup-q-hint">출발 공항을 선택하거나 직접 입력하세요</p>
+      <div class="airport-chips" id="airport-chips">
+        <!-- JS로 동적 생성 -->
+        <div class="airport-chip-loading">목적지를 먼저 선택해주세요</div>
+      </div>
+      <div class="setup-custom-row">
+        <input class="setup-big-input" id="airport-custom" type="text"
+          placeholder="또는 공항명을 직접 입력..." autocomplete="off" />
+      </div>
+      <div class="setup-nav">
+        <button class="setup-back-btn" onclick="stepBack(2)">← 이전</button>
+        <button class="setup-next-btn" onclick="stepNext(2)">다음 →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: Dates & Flights ── -->
+    <div class="setup-step" id="step-3">
+      <div class="setup-q-label">Q3</div>
+      <h2 class="setup-q">언제 여행하시나요?</h2>
+      <p class="setup-q-hint">날짜와 항공편 시간을 입력하면 일정이 더 정확해져요</p>
+
+      <div class="flight-row">
+        <div class="flight-card">
+          <div class="flight-card-label">✈️ 출발</div>
+          <input class="setup-date-input" id="dep-date" type="date" onchange="onDateChange()" />
+          <div class="flight-time-row">
+            <span class="flight-time-label">이륙 시간</span>
+            <input class="flight-time-input" id="dep-time" type="time" placeholder="선택사항" />
           </div>
         </div>
-        <input class="custom-theme-input" id="custom-theme" placeholder="예: 사진 여행, 역사 탐방..." />
-      </div>
-
-      <div class="setup-section">
-        <div class="setup-label">여행지</div>
-        <input class="s-input" id="dest-input" type="text" placeholder="예: 도쿄, 파리, 방콕..." style="width:100%" />
-      </div>
-
-      <div class="setup-section">
-        <div class="setup-label">여행 날짜</div>
-        <div class="date-range-card">
-          <div class="date-half">
-            <div class="date-half-label">✈️ 출발</div>
-            <input class="date-half-input" id="dep-date" type="date" onchange="onDateChange()" />
-          </div>
-          <div class="date-divider">
-            <div class="date-divider-line"></div>
-            <div class="date-divider-nights" id="date-nights">5박</div>
-            <div class="date-divider-line"></div>
-          </div>
-          <div class="date-half">
-            <div class="date-half-label">🏠 귀국</div>
-            <input class="date-half-input" id="ret-date" type="date" onchange="onDateChange()" />
+        <div class="flight-divider">
+          <div class="flight-nights" id="date-nights">—</div>
+          <div class="flight-divider-label">박</div>
+        </div>
+        <div class="flight-card">
+          <div class="flight-card-label">🏠 귀국</div>
+          <input class="setup-date-input" id="ret-date" type="date" onchange="onDateChange()" />
+          <div class="flight-time-row">
+            <span class="flight-time-label">착륙 시간</span>
+            <input class="flight-time-input" id="ret-time" type="time" placeholder="선택사항" />
           </div>
         </div>
-        <div class="date-summary" id="date-summary"></div>
       </div>
+      <div class="date-summary" id="date-summary"></div>
 
-      <button class="start-btn" onclick="startPlanning()">🗺️ 일정 계획 시작하기 →</button>
+      <div class="setup-nav">
+        <button class="setup-back-btn" onclick="stepBack(3)">← 이전</button>
+        <button class="setup-next-btn" onclick="stepNext(3)">다음 →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 4: Accommodation ── -->
+    <div class="setup-step" id="step-4">
+      <div class="setup-q-label">Q4</div>
+      <h2 class="setup-q">숙소는 정해지셨나요?</h2>
+      <p class="setup-q-hint">숙소를 검색하면 동선 최적화와 지도에 정확한 위치가 표시돼요</p>
+      <div id="hotel-input-wrap">
+        <input class="setup-big-input" id="hotel-input" type="text"
+          placeholder="호텔명·주소로 검색..." autocomplete="off" />
+      </div>
+      <div id="hotel-badge" style="display:none" class="place-info-badge"></div>
+      <div class="setup-nav">
+        <button class="setup-back-btn" onclick="stepBack(4)">← 이전</button>
+        <div style="display:flex;gap:10px">
+          <button class="setup-back-btn" onclick="skipHotel()">건너뛰기</button>
+          <button class="setup-next-btn" onclick="stepNext(4)">다음 →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 5: Theme ── -->
+    <div class="setup-step" id="step-5">
+      <div class="setup-q-label">Q5</div>
+      <h2 class="setup-q">어떤 스타일의 여행인가요?</h2>
+      <p class="setup-q-hint">AI 장소 추천에 활용돼요</p>
+      <div class="theme-grid">
+        <div class="theme-chip" data-v="미식여행" onclick="pickTheme(this)">
+          <div class="theme-chip-icon">🍜</div>
+          <div class="theme-chip-label">미식여행</div>
+        </div>
+        <div class="theme-chip" data-v="커플여행" onclick="pickTheme(this)">
+          <div class="theme-chip-icon">💑</div>
+          <div class="theme-chip-label">커플여행</div>
+        </div>
+        <div class="theme-chip" data-v="나홀로여행" onclick="pickTheme(this)">
+          <div class="theme-chip-icon">🎒</div>
+          <div class="theme-chip-label">나홀로여행</div>
+        </div>
+        <div class="theme-chip" data-v="가족여행" onclick="pickTheme(this)">
+          <div class="theme-chip-icon">👨‍👩‍👧</div>
+          <div class="theme-chip-label">가족여행</div>
+        </div>
+        <div class="theme-chip" data-v="액티비티" onclick="pickTheme(this)">
+          <div class="theme-chip-icon">🏄</div>
+          <div class="theme-chip-label">액티비티</div>
+        </div>
+        <div class="theme-chip" data-v="custom" onclick="pickTheme(this)">
+          <div class="theme-chip-icon">✏️</div>
+          <div class="theme-chip-label">직접 입력</div>
+        </div>
+      </div>
+      <input class="custom-theme-input" id="custom-theme" placeholder="예: 사진 여행, 역사 탐방..." />
+
+      <div class="setup-nav">
+        <button class="setup-back-btn" onclick="stepBack(5)">← 이전</button>
+        <button class="start-btn" onclick="startPlanning()">🗺️ 일정 계획 시작하기 →</button>
+      </div>
+    </div>
+
+    <!-- Key buttons -->
+    <div class="key-row">
+      <button class="key-badge-btn" onclick="openMapsKeyModal()">
+        <span class="key-status" id="maps-key-status">•</span> Google Maps Key
+      </button>
+      <button class="key-badge-btn" onclick="openGeminiKeyModal()">
+        <span class="key-status" id="gemini-key-status">•</span> Gemini Key
+      </button>
     </div>
   </div>
+
 
   <!-- ══ MAIN SCREEN ══ -->
   <div id="main-screen">
@@ -85,19 +171,31 @@
       <div class="topbar-logo">🗓 Trip<span>AI</span></div>
       <div class="topbar-dest" id="topbar-dest"></div>
       <div class="topbar-theme" id="topbar-theme"></div>
-      <button class="ai-btn" onclick="openAIPanel()">
-        <div class="ai-dot"></div> AI 최적화 추천
-      </button>
-      <button class="map-toggle-btn" onclick="openMapModal()">🗺️ 지도</button>
-      <button class="back-btn" onclick="goSetup()">← 처음으로</button>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button class="map-toggle-btn" id="map-toggle-btn" onclick="toggleMapPanel()">🗺️ 지도 닫기</button>
+        <button class="back-btn" onclick="goSetup()">← 처음으로</button>
+      </div>
     </div>
 
-    <!-- 2-panel: left blocks + multi-day grid -->
-    <div class="panels">
+    <!-- Split panels -->
+    <div class="panels" id="panels">
 
       <!-- LEFT: Place blocks -->
-      <div class="panel-left">
-        <div class="panel-left-header">추천 장소</div>
+      <div class="panel-left" id="panel-left">
+        <div class="panel-left-header">
+          추천 장소
+          <button class="refresh-places-btn" id="refresh-places-btn" onclick="refreshPlaces()" title="다시 추천받기">↻</button>
+        </div>
+        <!-- 사용자 장소 검색 -->
+        <div class="user-search-area">
+          <div class="user-search-row">
+            <input class="user-search-input" id="user-search-input" type="text"
+              placeholder="장소·맛집 검색해서 추가..."
+              onkeydown="if(event.key==='Enter')searchUserPlace()" />
+            <button class="user-search-btn" onclick="searchUserPlace()">🔍</button>
+          </div>
+          <div class="user-search-results" id="user-search-results" style="display:none"></div>
+        </div>
         <div class="cat-filter" id="cat-filter">
           <button class="cat-pill on" data-cat="관광" onclick="filterCat(this)">관광</button>
           <button class="cat-pill on" data-cat="맛집" onclick="filterCat(this)">맛집</button>
@@ -105,26 +203,36 @@
           <button class="cat-pill on" data-cat="쇼핑" onclick="filterCat(this)">쇼핑</button>
           <button class="cat-pill on" data-cat="휴식" onclick="filterCat(this)">휴식</button>
         </div>
-        <div class="blocks-list" id="blocks-list"></div>
+        <div class="blocks-list" id="blocks-list">
+          <div class="blocks-loading" id="blocks-loading" style="display:none">
+            <div class="spinner"></div>
+            <span>AI가 장소를 추천 중...</span>
+          </div>
+        </div>
       </div>
 
-      <!-- RIGHT: Multi-day grid (built by JS) -->
+      <!-- CENTER: Multi-day timeline -->
       <div class="panel-multi" id="panel-multi"></div>
-    </div>
-  </div>
 
-  <!-- Map Modal -->
-  <div class="map-modal-overlay" id="map-modal-overlay" onclick="closeMapModal()">
-    <div class="map-modal-card" onclick="event.stopPropagation()">
-      <div class="map-modal-header">
-        <span>🗺️ 지도 미리보기</span>
-        <button onclick="closeMapModal()">✕</button>
-      </div>
-      <div class="map-canvas" id="map-canvas">
-        <svg id="map-svg"></svg>
-        <div class="map-empty" id="map-empty">
-          <div class="map-empty-icon">🗺️</div>
-          <div>블록을 타임라인에 추가하면<br>여기에 경로가 표시돼요</div>
+      <!-- DIVIDER: 드래그로 너비 조절 -->
+      <div class="panel-divider" id="panel-divider" title="드래그해서 너비 조절"></div>
+
+      <!-- RIGHT: Google Maps (항상 표시) -->
+      <div class="panel-map" id="panel-map">
+        <div class="panel-map-header">
+          <span>🗺️ 여행 경로</span>
+          <div id="map-day-selector-wrap" style="display:flex;gap:4px;align-items:center"></div>
+        </div>
+        <!-- Google Maps 렌더링 div -->
+        <div id="google-map"></div>
+        <!-- Maps Key 없을 때 안내 -->
+        <div class="map-no-key" id="map-no-key" style="display:none">
+          <div style="font-size:32px;margin-bottom:12px">🗺️</div>
+          <div style="font-weight:700;margin-bottom:6px">Google Maps API Key가 필요해요</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+            실제 지도를 보려면 Google Maps Platform API Key를 등록해주세요.
+          </div>
+          <button class="btn-primary" onclick="openMapsKeyModal()">API Key 등록하기</button>
         </div>
       </div>
     </div>
@@ -133,32 +241,55 @@
   <!-- ══ AI PANEL ══ -->
   <div class="ai-panel" id="ai-panel">
     <div class="ai-panel-card">
-      <div class="ai-panel-title">✦ AI 일정 최적화</div>
-      <div class="ai-panel-sub" id="ai-panel-sub">날씨, 이동 거리, 영업시간을 고려해 최적 순서를 제안해드릴게요.</div>
+      <div class="ai-panel-title">🧠 AI 일정 최적화</div>
+      <div class="ai-panel-sub" id="ai-panel-sub">동선, 카테고리 흐름, 시간대를 분석해 최적 순서를 추천해드려요.</div>
       <div class="spinner-wrap" id="ai-loading" style="display:none">
         <div class="spinner"></div>
-        <span>AI가 일정을 분석 중이에요...</span>
+        <span>Gemini가 동선과 카테고리 흐름을 분석 중이에요...</span>
       </div>
-      <div class="ai-changes" id="ai-changes"></div>
-      <button class="ai-apply-btn" id="ai-apply-btn" onclick="applyOptimization()">✓ 이 순서로 적용하기</button>
-      <button class="ai-close-btn" onclick="closeAIPanel()">취소</button>
+      <!-- AI 요약 박스 -->
+      <div class="ai-summary-box" id="ai-summary-box" style="display:none"></div>
+      <!-- 이유 카드 목록 -->
+      <div class="ai-reasons" id="ai-reasons"></div>
+      <!-- 선택 버튼 -->
+      <div class="ai-action-row" id="ai-action-row" style="display:none">
+        <button class="ai-apply-btn" onclick="applyOptimization()">✓ 이 순서로 적용하기</button>
+        <button class="ai-keep-btn" onclick="closeAIPanel()">이전 계획 유지하기</button>
+      </div>
+      <button class="ai-close-x" onclick="closeAIPanel()">×</button>
     </div>
   </div>
 
-  <!-- Modal -->
-  <div class="modal-overlay" id="modal">
+  <!-- Google Maps Key Modal -->
+  <div class="modal-overlay" id="maps-modal">
+    <div class="modal">
+      <h3>🗺️ Google Maps API Key</h3>
+      <p>실제 지도와 장소 자동완성에 사용됩니다.<br>
+        <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console에서 발급 →</a>
+      </p>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">
+        Maps API Key (Maps JS API + Places API New 활성화 필요)</div>
+      <input type="password" id="maps-key-input" placeholder="AIza..." />
+      <div class="modal-btns">
+        <button class="btn-ghost" onclick="closeMapsKeyModal()">취소</button>
+        <button class="btn-primary" onclick="saveMapsKey()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gemini Key Modal -->
+  <div class="modal-overlay" id="gemini-modal">
     <div class="modal">
       <h3>🔑 Gemini API Key</h3>
       <p>AI 장소 추천과 일정 최적화에 사용됩니다.<br>
         <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio에서 무료 발급 →</a>
       </p>
-      <div
-        style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">
-        API Key</div>
-      <input type="password" id="key-input" placeholder="AIza..." />
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">
+        Gemini API Key</div>
+      <input type="password" id="gemini-key-input" placeholder="AIza..." />
       <div class="modal-btns">
-        <button class="btn-ghost" onclick="closeModal()">취소</button>
-        <button class="btn-primary" onclick="saveKey()">저장</button>
+        <button class="btn-ghost" onclick="closeGeminiKeyModal()">취소</button>
+        <button class="btn-primary" onclick="saveGeminiKey()">저장</button>
       </div>
     </div>
   </div>
