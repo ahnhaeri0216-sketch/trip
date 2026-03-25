@@ -2391,13 +2391,18 @@ async function openProject(pid, isCloud) {
 }
 
 let _isDeleting = false;
+let _lastDeleteTime = 0;
 
 async function deleteProject(pid, isCloud) {
-  if (_isDeleting) return;
+  if (_isDeleting || (Date.now() - _lastDeleteTime < 500)) return;
   _isDeleting = true;
+
+  // 클릭 이벤트 전파가 완전히 끝난 다음 tick에서 confirm을 띄워 브라우저 버그/충돌 방지
+  await new Promise(resolve => setTimeout(resolve, 10));
 
   if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
     _isDeleting = false;
+    _lastDeleteTime = Date.now();
     return;
   }
   
