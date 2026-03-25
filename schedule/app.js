@@ -54,6 +54,86 @@ function toast(msg) {
   clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
+/* ══ Auth ══ */
+function openLoginModal() {
+  document.getElementById('login-modal').classList.add('open');
+}
+function closeLoginModal() {
+  document.getElementById('login-modal').classList.remove('open');
+}
+async function signInWithGoogle() {
+  try {
+    const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + window.location.pathname
+      }
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.error('Google 로그인 에러:', err);
+    toast('로그인 중 오류가 발생했습니다.');
+  }
+}
+async function signInWithKakao() {
+  try {
+    const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: {
+        redirectTo: window.location.origin + window.location.pathname
+      }
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.error('Kakao 로그인 에러:', err);
+    toast('카카오 로그인 중 오류가 발생했습니다.');
+  }
+}
+async function signOut() {
+  try {
+    const { error } = await window.supabaseClient.auth.signOut();
+    if (error) throw error;
+    toast('로그아웃 되었습니다.');
+    // 현재 화면이 프로젝트 목록이면 새로고침
+    if (document.getElementById('projects-screen').style.display !== 'none') {
+      await loadProjects();
+    }
+  } catch (err) {
+    console.error('로그아웃 에러:', err);
+  }
+}
+
+// supabase.js에서 상태 변경 시 호출되는 UI 업데이트 함수
+window.updateAuthUI = function() {
+  const user = window.currentUser;
+  
+  // Projects 화면과 Main 화면의 Auth UI 영역 동시 업데이트
+  const authUIs = document.querySelectorAll('.auth-ui');
+  
+  authUIs.forEach(el => {
+    if (user) {
+      const avatar = user.user_metadata?.avatar_url || '';
+      const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+      el.innerHTML = `
+        <div class="user-profile" style="display:flex;align-items:center;gap:8px;">
+          ${avatar ? `<img src="${avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">` : `<div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold">${name[0]}</div>`}
+          <span style="font-size:14px;font-weight:600">${name}</span>
+          <button class="btn-ghost" style="padding:4px 8px;font-size:12px;" onclick="signOut()">로그아웃</button>
+        </div>
+      `;
+    } else {
+      el.innerHTML = `<button class="btn-ghost auth-login-btn" onclick="openLoginModal()">로그인</button>`;
+    }
+  });
+
+  // 로그인 모달 닫기
+  if (user) {
+    closeLoginModal();
+    // 로컬 데이터를 클라우드로 자동 마이그레이션 (백그라운드)
+    migrateLocalProjectsToCloud();
+  }
+};
+
 /* ══ API Key Modals ══ */
 function openMapsKeyModal() {
   document.getElementById('maps-modal').classList.add('open');
@@ -2013,6 +2093,340 @@ function renderAIPreviewMap(proposedNames, dayItems) {
   }
 }
 
+/* ══ Projects Data ══ */
+
+// 로컬 데이터를 클라우드로 마이그레이션
+async function migrateLocalProjectsToCloud() {
+  if (!window.currentUser) return;
+  const raw = localStorage.getItem('tripai_projects');
+  if (!raw) return;
+
+  try {
+    let localList = JSON.parse(raw);
+    if (!Array.isArray(localList) || localList.length === 0) return;
+
+    let migratedCount = 0;
+    for (const proj of localList) {
+      if (proj._migrated) continue; // 이미 마이그레이션된 항목 건너뛰기
+
+      const dataToSave = {
+        schedule: localStorage.getItem(`tripai_schedule_${proj.id}`) ? JSON.parse(localStorage.getItem(`tripai_schedule_${proj.id}`)) : { dest: proj.dest, theme: proj.theme, days: proj.dayCount },
+        flight: localStorage.getItem(`tripai_flight_${proj.id}`) ? JSON.parse(localStorage.getItem(`tripai_flight_${proj.id}`)) : { airport: proj.airport, hotel: proj.hotel, depDate: proj.depDate, retDate: proj.retDate },
+        places: localStorage.getItem(`tripai_places_${proj.id}`) ? JSON.parse(localStorage.getItem(`tripai_places_${proj.id}`)) : (proj.places || null),
+        userPlaces: localStorage.getItem(`tripai_userplaces_${proj.id}`) ? JSON.parse(localStorage.getItem(`tripai_userplaces_${proj.id}`)) : (proj.userPlaces || null),
+        schedData: localStorage.getItem(`tripai_sched_${proj.id}`) ? JSON.parse(localStorage.getItem(`tripai_sched_${proj.id}`)) : (proj.schedule || null),
+      };
+
+      const { data, error } = await window.supabaseClient
+        .from('projects')
+        .insert([{
+          user_id: window.currentUser.id,
+          title: proj.title || '새 내 여행',
+          data: dataToSave
+        }]);
+
+      if (!error) {
+        proj._migrated = true;
+        migratedCount++;
+      }
+    }
+    
+    if (migratedCount > 0) {
+      localStorage.setItem('tripai_projects', JSON.stringify(localList));
+      console.log(`${migratedCount}개의 프로젝트가 클라우드로 옮겨졌습니다.`);
+      // 목록 화면이면 다시 로드
+      if (document.getElementById('projects-screen').style.display !== 'none') {
+        loadProjects();
+      }
+    }
+  } catch (err) {
+    console.warn('마이그레이션 실패:', err);
+  }
+}
+
+async function loadProjects() {
+  const grid = document.getElementById('projects-grid');
+  const empty = document.getElementById('projects-empty');
+
+  let list = [];
+
+  if (window.currentUser) {
+    // ☁️ 클라우드에서 불어오기
+    try {
+      const { data, error } = await window.supabaseClient
+        .from('projects')
+        .select('*')
+        .order('updated_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      list = (data || []).map(p => ({
+        id: p.id,
+        title: p.title,
+        updatedAt: new Date(p.updated_at).getTime(),
+        _cloud: true,
+        data: p.data // 클라우드 데이터 통째로 들고 있음
+      }));
+    } catch (err) {
+      console.error('클라우드 프로젝트 로드 에러:', err);
+      toast('클라우드 프로젝트를 불러오지 못했습니다. 로컬 데이터를 표시합니다.');
+      // fallback to local
+      const raw = localStorage.getItem('tripai_projects');
+      if (raw) list = JSON.parse(raw);
+    }
+  } else {
+    // 💾 로컬에서 불러오기
+    const raw = localStorage.getItem('tripai_projects');
+    if (raw) list = JSON.parse(raw);
+  }
+
+  // 삭제처리 필터링 (로컬)
+  list = list.filter(p => !p.deleted);
+
+  if (list.length === 0) {
+    grid.style.display = 'none';
+    empty.style.display = 'flex';
+  } else {
+    empty.style.display = 'none';
+    grid.style.display = 'grid';
+    // 최신순 정렬
+    list.sort((a,b) => b.updatedAt - a.updatedAt);
+    grid.innerHTML = list.map(p => {
+      let dest, theme, dayCount, depDate, retDate, airport, hotel;
+      if (p._cloud && p.data) {
+        dest = p.data.schedule?.dest || p.title;
+        theme = p.data.schedule?.theme || '';
+        dayCount = p.data.schedule?.days || 0;
+        depDate = p.data.flight?.depDate || '';
+        retDate = p.data.flight?.retDate || '';
+        airport = p.data.flight?.airport || '';
+        hotel = p.data.flight?.hotel || '';
+      } else {
+        const schedD = JSON.parse(localStorage.getItem(`tripai_schedule_${p.id}`) || '{}');
+        const flightD = JSON.parse(localStorage.getItem(`tripai_flight_${p.id}`) || '{}');
+        dest = schedD.dest || p.dest || p.title;
+        theme = schedD.theme || p.theme || '';
+        dayCount = schedD.days || p.dayCount || 0;
+        depDate = flightD.depDate || p.depDate || '';
+        retDate = flightD.retDate || p.retDate || '';
+        airport = flightD.airport || p.airport || '';
+        hotel = flightD.hotel || p.hotel || '';
+      }
+      
+      const nights = dayCount || 0;
+      const fmtD = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '';
+      const dateStr = (depDate && retDate) ? `${fmtD(depDate)} → ${fmtD(retDate)} · ${nights}박 ${nights+1}일` : '';
+      const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+      
+      return `
+      <div class="project-card" onclick="openProject('${p.id}', ${p._cloud ? 'true' : 'false'})">
+        <div class="project-card-dest">✈ ${dest || '여행'} ${p._cloud ? '☁️' : ''}</div>
+        <div class="project-card-meta">
+          ${dateStr ? `<div class="project-card-dates">${dateStr}</div>` : ''}
+          <div class="project-card-chips">
+            ${theme ? `<span class="project-card-chip">${theme}</span>` : ''}
+            ${airport ? `<span class="project-card-chip sky">✈ ${airport}</span>` : ''}
+            ${hotel ? `<span class="project-card-chip sky">🏨 ${hotel}</span>` : ''}
+          </div>
+        </div>
+        <div class="project-card-footer">
+          <div class="project-card-updated">수정: ${updated}</div>
+          <button class="project-card-delete" onclick="event.stopPropagation();deleteProject('${p.id}', ${p._cloud ? 'true' : 'false'})">&#x2715; 삭제</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+async function saveCurrentProject() {
+  if (!st.dest) return;
+  const ts = Date.now();
+  const projTitle = `${st.dest} 여행 (${st.dayCount}박)`;
+  st.projectId = st.projectId || `proj_${ts}_${Math.random().toString(36).substr(2,9)}`;
+
+  const flightLS = JSON.parse(localStorage.getItem('tripai_flight') || '{}');
+  const dataToSave = {
+    schedule: { dest: st.dest, theme: st.theme, days: st.dayCount, activities: [...st.activeCats] },
+    flight: { airport: st.airport, hotel: st.hotel, depDate: flightLS.depDate || '', retDate: flightLS.retDate || '' },
+    places: st.places,
+    userPlaces: st.userPlaces,
+    schedData: st.schedule,
+  };
+
+  if (window.currentUser) {
+    // ☁️ 클라우드 저장
+    try {
+      // 기존 클라우드 ID면 update, 아니면(새로 생성되었거나 로컬ID면) insert
+      let isUpdate = false;
+      // UUID 포맷인지 간단 체크 (Supabase ID)
+      if (st.projectId.length === 36 && st.projectId.includes('-')) {
+        isUpdate = true;
+      }
+
+      if (isUpdate) {
+        const { error } = await window.supabaseClient
+          .from('projects')
+          .update({
+            title: projTitle,
+            data: dataToSave,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', st.projectId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await window.supabaseClient
+          .from('projects')
+          .insert([{
+            user_id: window.currentUser.id,
+            title: projTitle,
+            data: dataToSave
+          }])
+          .select();
+        if (error) throw error;
+        if (data && data[0]) {
+          st.projectId = data[0].id; // DB에서 생성된 UUID 할당
+        }
+      }
+      toast('☁️ 클라우드에 자동 저장됨');
+    } catch (err) {
+      console.error('클라우드 저장 실패:', err);
+      // fallback to local save below
+    }
+  }
+
+  // 항상 로컬에도 최신본 백업 (오프라인/에러 대비)
+  let list = [];
+  const raw = localStorage.getItem('tripai_projects');
+  if (raw) list = JSON.parse(raw);
+  
+  const idx = list.findIndex(p => p.id === st.projectId);
+  if (idx > -1) {
+    list[idx].updatedAt = ts;
+    list[idx].title = projTitle;
+  } else {
+    list.push({ id: st.projectId, title: projTitle, updatedAt: ts });
+  }
+  localStorage.setItem('tripai_projects', JSON.stringify(list));
+
+  localStorage.setItem(`tripai_schedule_${st.projectId}`, JSON.stringify(dataToSave.schedule));
+  localStorage.setItem(`tripai_flight_${st.projectId}`, JSON.stringify(dataToSave.flight));
+  localStorage.setItem(`tripai_places_${st.projectId}`, JSON.stringify(st.places));
+  localStorage.setItem(`tripai_userplaces_${st.projectId}`, JSON.stringify(st.userPlaces));
+  localStorage.setItem(`tripai_sched_${st.projectId}`, JSON.stringify(st.schedule));
+}
+
+async function openProject(pid, isCloud) {
+  try {
+    let schedD, flightD, placesD, uPlacesD, schedItemsD;
+
+    if (isCloud && window.currentUser) {
+      const { data, error } = await window.supabaseClient
+        .from('projects')
+        .select('data')
+        .eq('id', pid)
+        .single();
+      
+      if (error) throw error;
+      if (data && data.data) {
+        schedD = data.data.schedule;
+        flightD = data.data.flight;
+        placesD = data.data.places;
+        uPlacesD = data.data.userPlaces;
+        schedItemsD = data.data.schedData;
+      }
+    } else {
+      schedD = JSON.parse(localStorage.getItem(`tripai_schedule_${pid}`));
+      flightD = JSON.parse(localStorage.getItem(`tripai_flight_${pid}`));
+      placesD = JSON.parse(localStorage.getItem(`tripai_places_${pid}`));
+      uPlacesD = JSON.parse(localStorage.getItem(`tripai_userplaces_${pid}`));
+      schedItemsD = JSON.parse(localStorage.getItem(`tripai_sched_${pid}`));
+    }
+
+    if (!schedD) { toast('프로젝트 데이터를 찾을 수 없습니다.'); return; }
+
+    st.projectId = pid;
+    st.dest = schedD.dest;
+    st.theme = schedD.theme;
+    st.dayCount = schedD.days;
+    st.activeCats = new Set(schedD.activities || ['관광','맛집','카페','쇼핑','휴식']);
+
+    st.airport = flightD?.airport || '';
+    st.hotel = flightD?.hotel || '';
+    
+    st.places = placesD || [];
+    st.userPlaces = uPlacesD || [];
+    st.schedule = schedItemsD || {};
+    
+    if (Object.keys(st.schedule).length === 0) {
+      for (let d = 1; d <= st.dayCount; d++) st.schedule[d] = {};
+    }
+
+    // 화면 전환
+    document.getElementById('projects-screen').style.display = 'none';
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('main-screen').classList.add('visible');
+    history.pushState({ screen: 'main' }, '');
+
+    buildMainScreen();
+    renderBlocks();
+    toast(`📂 ${st.dest} 여행을 불러왔습니다`);
+
+    // 지도 연동
+    if (st.mapsLoaded && st.mapsApiKey && window.google?.maps) {
+      new google.maps.Geocoder().geocode({ address: st.dest }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          st.destLatLng = {
+            lat: results[0].geometry.location.lat(),
+            lng: results[0].geometry.location.lng(),
+          };
+          renderGoogleMap();
+        }
+      });
+    }
+  } catch(e) {
+    console.error('프로젝트 열기 실패:', e);
+    toast('프로젝트를 불러오는 중 오류가 발생했습니다.');
+  }
+}
+
+async function deleteProject(pid, isCloud) {
+  if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
+  
+  if (isCloud && window.currentUser) {
+    try {
+      const { error } = await window.supabaseClient
+        .from('projects')
+        .delete()
+        .eq('id', pid);
+      if (error) throw error;
+      toast('🗑 클라우드에서 삭제되었습니다.');
+    } catch (err) {
+      console.error('삭제 도중 에러:', err);
+      toast('삭제에 실패했습니다.');
+      return;
+    }
+  } else {
+    // 로컬 삭제
+    let list = [];
+    const raw = localStorage.getItem('tripai_projects');
+    if (raw) list = JSON.parse(raw);
+    const idx = list.findIndex(p => p.id === pid);
+    if (idx > -1) {
+      list[idx].deleted = true; // 소프트 딜리트
+      localStorage.setItem('tripai_projects', JSON.stringify(list));
+      
+      localStorage.removeItem(`tripai_schedule_${pid}`);
+      localStorage.removeItem(`tripai_flight_${pid}`);
+      localStorage.removeItem(`tripai_places_${pid}`);
+      localStorage.removeItem(`tripai_userplaces_${pid}`);
+      localStorage.removeItem(`tripai_sched_${pid}`);
+      toast('🗑 로컬에서 삭제되었습니다.');
+    }
+  }
+  
+  loadProjects();
+}
+
 function clearAIPreviewMap() {
   // 미리보기 제거
   st.previewMarkers.forEach(m => m.setMap(null));
@@ -2099,13 +2513,7 @@ function closeAIPanel() {
   });
 })();
 
-/* ════════ PROJECTS 관리 ════════ */
-
-function _loadProjects() {
-  try { return JSON.parse(localStorage.getItem('tripai_projects') || '[]'); }
-  catch { return []; }
-}
-function _saveProjects(p) { localStorage.setItem('tripai_projects', JSON.stringify(p)); }
+/* ════════ PROJECTS 화면 라우팅 ════════ */
 
 function initApp() { showProjectsScreen(); }
 
@@ -2113,72 +2521,13 @@ function showProjectsScreen() {
   document.getElementById('projects-screen').style.display = '';
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('main-screen').classList.remove('visible');
-  renderProjectsScreen();
+  loadProjects();
 }
 
-function renderProjectsScreen() {
-  const projects = _loadProjects();
-  const grid  = document.getElementById('projects-grid');
-  const empty = document.getElementById('projects-empty');
-  grid.innerHTML = '';
-  if (!projects.length) { empty.style.display = ''; return; }
-  empty.style.display = 'none';
-
-  projects.slice().reverse().forEach(proj => {
-    const card = document.createElement('div');
-    card.className = 'project-card';
-    card.onclick = () => openProject(proj.id);
-    const nights = proj.dayCount || 0;
-    const fmtD = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '';
-    const dateStr = (proj.depDate && proj.retDate) ? `${fmtD(proj.depDate)} → ${fmtD(proj.retDate)} · ${nights}박 ${nights+1}일` : '';
-    const updated = proj.updatedAt ? new Date(proj.updatedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-    card.innerHTML = `
-      <div class="project-card-dest">✈ ${proj.dest || '여행'}</div>
-      <div class="project-card-meta">
-        <div class="project-card-dates">${dateStr}</div>
-        <div class="project-card-chips">
-          ${proj.theme ? `<span class="project-card-chip">${proj.theme}</span>` : ''}
-          ${proj.airport ? `<span class="project-card-chip sky">✈ ${proj.airport}</span>` : ''}
-          ${proj.hotel ? `<span class="project-card-chip sky">🏨 ${proj.hotel}</span>` : ''}
-        </div>
-      </div>
-      <div class="project-card-footer">
-        <div class="project-card-updated">수정: ${updated}</div>
-        <button class="project-card-delete" onclick="event.stopPropagation();deleteProject('${proj.id}')">&#x2715; 삭제</button>
-      </div>`;
-    grid.appendChild(card);
-  });
-}
-
-function openProject(id) {
-  const projects = _loadProjects();
-  const proj = projects.find(p => p.id === id);
-  if (!proj) { toast('프로젝트를 찾을 수 없어요'); return; }
-
-  st.dest      = proj.dest      || '';
-  st.destLatLng= proj.destLatLng|| null;
-  st.theme     = proj.theme     || '';
-  st.dayCount  = proj.dayCount  || 1;
-  st.airport   = proj.airport   || '';
-  st.hotel     = proj.hotel     || '';
-  st.hotelLatLng  = proj.hotelLatLng  || null;
-  st.hotelAddress = proj.hotelAddress || '';
-  st.schedule  = proj.schedule  || {};
-  st.places    = proj.places    || [];
-  st.userPlaces= proj.userPlaces|| [];
-  st._currentProjectId = id;
-
-  localStorage.setItem('tripai_flight', JSON.stringify({
-    dest: st.dest, depDate: proj.depDate, retDate: proj.retDate,
-    nights: st.dayCount, airport: st.airport, hotel: st.hotel,
-  }));
-
-  document.getElementById('projects-screen').style.display = 'none';
-  buildMainScreen();
-  renderBlocks();
-  document.getElementById('main-screen').classList.add('visible');
-  history.pushState({ screen: 'main' }, '');
-  if (st.mapsLoaded) renderGoogleMap();
+function goProjects() {
+  saveCurrentProject();
+  showProjectsScreen();
+  history.pushState({ screen: 'projects' }, '');
 }
 
 function createNewProject() {
@@ -2186,7 +2535,7 @@ function createNewProject() {
   st.dayCount=1; st.airport=''; st.hotel='';
   st.hotelLatLng=null; st.hotelAddress='';
   st.schedule={}; st.places=[]; st.userPlaces=[];
-  st._currentProjectId=null;
+  st.projectId=null;
 
   _currentStep = 1;
   document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
@@ -2199,39 +2548,6 @@ function createNewProject() {
   document.getElementById('projects-screen').style.display = 'none';
   document.getElementById('setup-screen').style.display = '';
   history.pushState({ screen: 'setup' }, '');
-}
-
-function saveCurrentProject() {
-  if (!st.dest || !st.dayCount) return;
-  const projects = _loadProjects();
-  const id = st._currentProjectId || `trip-${Date.now()}`;
-  st._currentProjectId = id;
-  const flight = JSON.parse(localStorage.getItem('tripai_flight') || '{}');
-  const idx = projects.findIndex(p => p.id === id);
-  const proj = {
-    id, dest: st.dest, destLatLng: st.destLatLng,
-    theme: st.theme, dayCount: st.dayCount,
-    airport: st.airport, hotel: st.hotel,
-    hotelLatLng: st.hotelLatLng, hotelAddress: st.hotelAddress,
-    depDate: flight.depDate || '', retDate: flight.retDate || '',
-    schedule: st.schedule, places: st.places, userPlaces: st.userPlaces,
-    createdAt: (idx >= 0 ? projects[idx].createdAt : null) || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  if (idx >= 0) projects[idx] = proj; else projects.push(proj);
-  _saveProjects(projects);
-}
-
-function deleteProject(id) {
-  _saveProjects(_loadProjects().filter(p => p.id !== id));
-  renderProjectsScreen();
-  toast('여행이 삭제됩니다');
-}
-
-function goProjects() {
-  saveCurrentProject();
-  showProjectsScreen();
-  history.pushState({ screen: 'projects' }, '');
 }
 
 
