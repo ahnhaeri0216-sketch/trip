@@ -356,6 +356,19 @@
     </div>
   </div>
 
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay" id="delete-confirm-modal" style="z-index:9999">
+    <div class="modal" style="max-width:360px;text-align:center">
+      <div style="font-size:28px;margin-bottom:12px">🗑️</div>
+      <h3 style="margin-bottom:8px">프로젝트 삭제</h3>
+      <p style="color:var(--muted);margin-bottom:24px">정말 이 프로젝트를 삭제하시겠습니까?<br>삭제 후에는 복구할 수 없습니다.</p>
+      <div class="modal-btns">
+        <button class="btn-ghost" id="delete-cancel-btn">취소</button>
+        <button class="btn-primary" id="delete-confirm-btn" style="background:var(--coral)">삭제</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
   
   <!-- Supabase -->

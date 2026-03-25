@@ -2403,13 +2403,36 @@ async function openProject(pid, isCloud) {
 let _isDeleting = false;
 let _lastDeleteTime = 0;
 
+// Promise 기반 커스텀 삭제 확인 모달
+function showDeleteConfirm() {
+  return new Promise(resolve => {
+    const modal = document.getElementById('delete-confirm-modal');
+    const confirmBtn = document.getElementById('delete-confirm-btn');
+    const cancelBtn = document.getElementById('delete-cancel-btn');
+    modal.classList.add('open');
+
+    function cleanup(result) {
+      modal.classList.remove('open');
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(result);
+    }
+    function onConfirm() { cleanup(true); }
+    function onCancel() { cleanup(false); }
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
 async function deleteProject(pid, isCloud) {
   if (_isDeleting || (Date.now() - _lastDeleteTime < 500)) return;
   _isDeleting = true;
   _lastDeleteTime = Date.now();
 
   try {
-    if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
+    const confirmed = await showDeleteConfirm();
+    if (!confirmed) {
       _isDeleting = false;
       return;
     }
