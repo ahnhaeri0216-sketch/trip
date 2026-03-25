@@ -490,11 +490,7 @@ async function startPlanning() {
     document.getElementById('main-screen').classList.add('visible');
     history.pushState({ screen: 'main' }, '');
 
-    if (st.mapsLoaded && st.mapsApiKey) {
-      await loadFallbackPlaces();
-    } else {
-      await fetchGeminiPlaces();
-    }
+    await fetchGeminiPlaces();
     saveCurrentProject(); // 완료 시 자동 저장
   } catch(err) {
     console.error('[startPlanning]', err);
