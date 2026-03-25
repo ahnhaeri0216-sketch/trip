@@ -2230,7 +2230,7 @@ async function loadProjects() {
       const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit' }) : '';
       
       return `
-      <div class="project-card" onclick="openProject('${p.id}', ${!!p._cloud})">
+      <div class="project-card" onclick="if(!event.target.closest('.project-card-delete')) openProject('${p.id}', ${!!p._cloud})">
         <div class="project-card-dest">✈ ${dest || '여행'} ${p._cloud ? '☁️' : ''}</div>
         <div class="project-card-meta">
           ${dateStr ? `<div class="project-card-dates">${dateStr}</div>` : ''}
@@ -2242,7 +2242,7 @@ async function loadProjects() {
         </div>
         <div class="project-card-footer">
           <div class="project-card-updated">수정: ${updated}</div>
-          <button class="project-card-delete" onclick="(function(e){ e.stopImmediatePropagation(); e.stopPropagation(); e.preventDefault(); deleteProject('${p.id}', ${!!p._cloud}); return false; })(event)">&times; 삭제</button>
+          <button class="project-card-delete" onclick="deleteProject('${p.id}', ${!!p._cloud})">&#x2715; 삭제</button>
         </div>
       </div>`;
     }).join('');
