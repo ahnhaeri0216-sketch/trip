@@ -29,8 +29,8 @@ const st = {
   destLatLng: null,    // { lat, lng }
   theme:      '',
   dayCount:   3,
-  mapsApiKey: '',
-  geminiApiKey:'',
+  mapsApiKey: '여기에_직접_구글맵_API_키를_입력하세요',
+  geminiApiKey: '',
   activeCats: new Set(['관광','맛집','카페','쇼핑','휴식']),
   schedule:   {},      // { day: { slotTime: placeObj } }
   places:     [],      // AI 추천 place blocks
@@ -692,9 +692,9 @@ Return exactly ${categories.length * 3} places, ${3} per category.
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${st.geminiApiKey}`,
+      `/api/gemini`,
       { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }] }) }
+        body: JSON.stringify({ model: 'gemini-1.5-flash', contents:[{ parts:[{ text: prompt }] }] }) }
     );
 
     // 429 Too Many Requests → Maps 폴백 또는 재시도
@@ -1912,9 +1912,9 @@ suggestions는 2~3개만.`;
 
   try {
     const res  = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${st.geminiApiKey}`,
+      `/api/gemini`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+        body: JSON.stringify({ model: 'gemini-2.0-flash', contents: [{ parts: [{ text: prompt }] }] }) }
     );
     if (!res.ok) throw new Error(`${res.status}`);
     const data = await res.json();
@@ -2478,8 +2478,8 @@ function closeAIPanel() {
 
 /* ══ Init ══ */
 (function init() {
-  st.mapsApiKey   = localStorage.getItem('tripai_maps_key') || '';
-  st.geminiApiKey = localStorage.getItem('tripai_key') || '';
+  st.mapsApiKey   = localStorage.getItem('tripai_maps_key') || '여기에_직접_구글맵_API_키를_입력하세요';
+  // st.geminiApiKey = localStorage.getItem('tripai_key') || ''; // Vercel 서버리스 사용으로 프론트엔드 키 제거
 
   updateKeyStatuses();
 
