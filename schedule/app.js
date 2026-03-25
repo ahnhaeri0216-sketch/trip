@@ -667,8 +667,11 @@ async function fetchGeminiPlaces(retry = 0) {
   // Gemini API는 서버리스 함수(/api/gemini)를 통해 호출하므로 프론트엔드 키 체크 불필요
 
   const categories = [...st.activeCats];
+  const hotelContext = st.hotel ? `The traveler is staying at "${st.hotel}". Please try to recommend places that are reasonably accessible from this location, or consider it as a starting point.` : '';
+
   const prompt = `
 You are a travel planning assistant. Recommend real, existing, famous places in ${st.dest} for a "${st.theme}" trip.
+${hotelContext}
 Return ONLY a JSON object, no other text.
 
 For each place, provide:
