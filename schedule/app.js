@@ -2230,7 +2230,7 @@ async function loadProjects() {
       const updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit' }) : '';
       
       return `
-      <div class="project-card" onclick="if(!event.target.closest('.project-card-delete')) openProject('${p.id}', ${!!p._cloud})">
+      <div class="project-card" data-pid="${p.id}" data-cloud="${!!p._cloud}">
         <div class="project-card-dest">✈ ${dest || '여행'} ${p._cloud ? '☁️' : ''}</div>
         <div class="project-card-meta">
           ${dateStr ? `<div class="project-card-dates">${dateStr}</div>` : ''}
@@ -2242,7 +2242,7 @@ async function loadProjects() {
         </div>
         <div class="project-card-footer">
           <div class="project-card-updated">수정: ${updated}</div>
-          <button class="project-card-delete" onclick="deleteProject('${p.id}', ${!!p._cloud})">&#x2715; 삭제</button>
+          <button class="project-card-delete" data-pid="${p.id}" data-cloud="${!!p._cloud}">&#x2715; 삭제</button>
         </div>
       </div>`;
     }).join('');
@@ -2527,6 +2527,23 @@ function closeAIPanel() {
 
   // 앱 시작: Projects 홈으로
   initApp();
+
+  // ── 프로젝트 카드 이벤트 위임 (loadProjects 재렌더 때마다 중복 등록 방지) ──
+  document.getElementById('projects-grid').addEventListener('click', function(e) {
+    const deleteBtn = e.target.closest('.project-card-delete');
+    if (deleteBtn) {
+      const pid = deleteBtn.dataset.pid;
+      const isCloud = deleteBtn.dataset.cloud === 'true';
+      deleteProject(pid, isCloud);
+      return;
+    }
+    const card = e.target.closest('.project-card');
+    if (card) {
+      const pid = card.dataset.pid;
+      const isCloud = card.dataset.cloud === 'true';
+      openProject(pid, isCloud);
+    }
+  });
 
   // 브라우저 뒤로가기 처리
   window.addEventListener('popstate', (e) => {
